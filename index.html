@@ -166,6 +166,14 @@ window.cancelTask = async function(){
   await updateDoc(doc(db,'tasks',id),{status:'Cancelado'});
   const sp=document.getElementById('td-status-pill'); sp.className='pill pill-gray'; sp.textContent='Cancelado';
 };
+window.deleteTask = async function(){
+  const id=document.getElementById('tasks-detail-wrap').dataset.taskId;
+  if(!id) return;
+  const title=document.getElementById('td-title').textContent;
+  if(!confirm('Apagar a tarefa "'+title+'"?\nEsta acção não pode ser desfeita.')) return;
+  await deleteDoc(doc(db,'tasks',id));
+  closeTask();
+};
 
 /* ── add new task ── */
 window.addNewTask = async function(){
@@ -738,7 +746,7 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
           </div>
           <div style="display:flex;gap:8px">
             <button class="btn btn-sm"><i class="ti ti-edit"></i> Editar</button>
-            <button class="btn btn-sm" style="border-color:#fecaca;color:#ef4444"><i class="ti ti-trash"></i></button>
+            <button class="btn btn-sm" onclick="deleteTask()" style="border-color:#fecaca;color:#ef4444"><i class="ti ti-trash"></i></button>
           </div>
         </div>
         <div class="grid-2" style="align-items:start">
