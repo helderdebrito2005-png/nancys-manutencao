@@ -5,6 +5,205 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nancy's Manutenção</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDY7tiIMygGfcTPK3WmuF2Uq00dmtFs2BU",
+  authDomain: "nes-canvas.firebaseapp.com",
+  projectId: "nes-canvas",
+  storageBucket: "nes-canvas.firebasestorage.app",
+  messagingSenderId: "536624666953",
+  appId: "1:536624666953:web:10e80824307c8b0d942298"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ── helpers ── */
+function statusClass(s){
+  if(s==='Resolvido') return 'pill-green';
+  if(s==='Em andamento') return 'pill-blue';
+  if(s==='Cancelado') return 'pill-gray';
+  return 'pill-amber';
+}
+
+function unitClass(u){ return u==='BENGUELA'?'b':u==='LOBITO'?'l':'c'; }
+
+function techHTML(techArr){
+  const colors={'Miguel':'#dc2626','Paulo':'#7c3aed','Sr. Domingos':'#059669','Soma':'#0d9488','Michael':'#7c3aed','Condor':'#0d9488','Domildes':'#f59e0b'};
+  return (techArr||[]).map(n=>`<div class="tavatar" style="background:${colors[n]||'#6366f1'}" title="${n}">${n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}</div>`).join('');
+}
+
+function photoCount(photos){ return (photos||[]).length; }
+
+/* ── render grid card ── */
+function cardHTML(t, id){
+  const uc=unitClass(t.unit);
+  const sc=statusClass(t.status);
+  const statusLabel=t.status||'Pendente';
+  const pc=photoCount(t.photos);
+  return `<div class="tcard" onclick="openTaskFB('${id}')">
+    <div class="tcard-header"><span class="unit-${uc}">${t.unit}</span><span class="tcard-prio"><i class="ti ti-arrow-right"></i> ${t.prio||'Média'}</span><span class="pill ${sc}" style="margin-left:auto">${statusLabel}</span></div>
+    <div class="tcard-title">${t.title}</div>
+    <div class="tcard-meta"><span><i class="ti ti-calendar"></i>${t.start||'—'}</span><span><i class="ti ti-clock"></i>${t.dur||'—'}</span><span><i class="ti ti-photo"></i>${pc}</span></div>
+    <div class="tcard-footer"><div style="display:flex;gap:3px">${techHTML(t.tech)}</div><i class="ti ti-chevron-right" style="color:#94a3b8"></i></div>
+  </div>`;
+}
+
+/* ── render kanban card ── */
+function kanbanCardHTML(t, id){
+  const uc=unitClass(t.unit);
+  return `<div class="kanban-card" onclick="openTaskFB('${id}')">
+    <div style="margin-bottom:5px"><span class="unit-${uc}">${t.unit}</span></div>
+    <div class="kanban-card-title">${t.title}</div>
+    <div class="kanban-card-footer"><div style="display:flex;gap:3px">${techHTML(t.tech)}</div><span style="font-size:10px;color:#94a3b8">${t.start||''}</span></div>
+  </div>`;
+}
+
+/* ── render spreadsheet row ── */
+function sheetRowHTML(t, id, idx){
+  const uc=unitClass(t.unit);
+  const sc=statusClass(t.status);
+  const photosHTML=(t.photos||[]).slice(0,3).map(p=>`<img class="thumb" src="${p.src}" onclick="event.stopPropagation();lb(this.src,'${p.cap||''}')" style="width:32px;height:32px">`).join('');
+  const extra=(t.photos||[]).length>3?`<span style="font-size:11px;color:#94a3b8;padding:2px 6px;background:#f1f5f9;border-radius:6px">+${(t.photos||[]).length-3}</span>`:'';
+  return `<tr style="cursor:pointer" onclick="openTaskFB('${id}')">
+    <td style="color:#94a3b8;font-weight:700">${idx}</td>
+    <td><strong>${t.title}</strong>${t.note?`<div style="font-size:11px;color:#94a3b8">${t.note}</div>`:''}</td>
+    <td><span class="unit-${uc}">${t.unit}</span></td>
+    <td><span class="pill ${sc}">${t.status||'Pendente'}</span></td>
+    <td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> ${t.prio||'Média'}</span></td>
+    <td>${(t.tech||[]).join(', ')}</td>
+    <td>${t.start||'—'}</td>
+    <td>${t.dur||'—'}</td>
+    <td><div class="thumbs">${photosHTML}${extra}</div></td>
+  </tr>`;
+}
+
+/* ── live listener ── */
+let allTasks = {};
+const q = query(collection(db,'tasks'), orderBy('createdAt','asc'));
+onSnapshot(q, snap => {
+  allTasks = {};
+  snap.forEach(d => { allTasks[d.id] = d.data(); });
+  renderAllViews();
+});
+
+function renderAllViews(){
+  const tasks = Object.entries(allTasks);
+
+  // GRID
+  const grid = document.getElementById('tv-grid');
+  if(grid) grid.innerHTML = tasks.length
+    ? tasks.map(([id,t])=>cardHTML(t,id)).join('')
+    : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#94a3b8">Nenhuma tarefa registada</div>';
+
+  // KANBAN columns
+  const statuses = ['Pendente','Em andamento','Resolvido','Cancelado'];
+  const kCols = {'Pendente':'kc-pend','Em andamento':'kc-prog','Resolvido':'kc-done','Cancelado':'kc-cancel'};
+  statuses.forEach(s=>{
+    const col=document.getElementById(kCols[s]);
+    if(!col) return;
+    const filtered=tasks.filter(([,t])=>(t.status||'Pendente')===s);
+    document.getElementById(kCols[s]+'-count').textContent=filtered.length;
+    col.innerHTML=filtered.length?filtered.map(([id,t])=>kanbanCardHTML(t,id)).join(''):'<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px">Sem tarefas</div>';
+  });
+
+  // SHEET
+  const tbody = document.getElementById('sheet-tbody');
+  if(tbody) tbody.innerHTML = tasks.map(([id,t],i)=>sheetRowHTML(t,id,i+1)).join('');
+}
+
+/* ── open task detail ── */
+window.openTaskFB = function(id){
+  const t = allTasks[id]; if(!t) return;
+  document.getElementById('tasks-views-wrap').style.display='none';
+  document.getElementById('tasks-filters-wrap').style.display='none';
+  const ub=document.getElementById('td-unit-badge');
+  ub.className='unit-'+unitClass(t.unit); ub.textContent=t.unit;
+  document.getElementById('td-prio-tag').innerHTML='<i class="ti ti-arrow-right" style="font-size:10px"></i> '+(t.prio||'Média');
+  document.getElementById('td-title').textContent=t.title;
+  const sp=document.getElementById('td-status-pill'); sp.className='pill '+statusClass(t.status); sp.textContent=t.status||'Pendente';
+  document.getElementById('td-start').textContent=t.start||'—';
+  document.getElementById('td-end').textContent=t.end||'—';
+  document.getElementById('td-dur').textContent=t.dur||'—';
+  document.getElementById('td-req').textContent=t.req||'—';
+  const team=document.getElementById('td-team'); team.innerHTML='';
+  (t.tech||[]).forEach(n=>{
+    const colors={'Miguel':'#dc2626','Paulo':'#7c3aed','Sr. Domingos':'#059669','Soma':'#0d9488'};
+    const initials=n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    team.innerHTML+=`<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:#f8fafc;border-radius:8px"><div class="avatar" style="width:30px;height:30px;font-size:10px;background:${colors[n]||'#6366f1'}">${initials}</div><span style="font-size:13px;font-weight:600">${n}</span></div>`;
+  });
+  const pc=document.getElementById('td-photos-card'), pd=document.getElementById('td-photos');
+  if((t.photos||[]).length>0){
+    pd.innerHTML=(t.photos||[]).map(p=>`<img class="thumb" src="${p.src}" onclick="lb(this.src,'${p.cap||''}')" style="width:80px;height:80px">`).join('');
+    pc.style.display='';
+  } else { pc.style.display='none'; }
+  // store current id for status actions
+  document.getElementById('tasks-detail-wrap').dataset.taskId=id;
+  document.getElementById('tasks-detail-wrap').style.display='';
+  window.scrollTo(0,0);
+};
+
+/* ── status action buttons ── */
+window.markTaskDone = async function(){
+  const id=document.getElementById('tasks-detail-wrap').dataset.taskId;
+  if(!id) return;
+  await updateDoc(doc(db,'tasks',id),{status:'Resolvido'});
+  const sp=document.getElementById('td-status-pill'); sp.className='pill pill-green'; sp.textContent='Resolvido';
+};
+window.startTask = async function(){
+  const id=document.getElementById('tasks-detail-wrap').dataset.taskId;
+  if(!id) return;
+  await updateDoc(doc(db,'tasks',id),{status:'Em andamento'});
+  const sp=document.getElementById('td-status-pill'); sp.className='pill pill-blue'; sp.textContent='Em andamento';
+};
+window.cancelTask = async function(){
+  const id=document.getElementById('tasks-detail-wrap').dataset.taskId;
+  if(!id) return;
+  await updateDoc(doc(db,'tasks',id),{status:'Cancelado'});
+  const sp=document.getElementById('td-status-pill'); sp.className='pill pill-gray'; sp.textContent='Cancelado';
+};
+
+/* ── add new task ── */
+window.addNewTask = async function(){
+  const title=document.getElementById('new-task-title').value.trim();
+  const unit=document.getElementById('new-task-unit').value;
+  const prio=document.getElementById('new-task-prio').value;
+  const tech=document.getElementById('new-task-tech').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const req=document.getElementById('new-task-req').value.trim();
+  const start=document.getElementById('new-task-start').value.trim();
+  if(!title){alert('Escreve o título da tarefa');return;}
+  await addDoc(collection(db,'tasks'),{
+    title, unit, tech, start, prio, req, status:'Pendente',
+    end:'', dur:'', note:'', photos:[], createdAt:serverTimestamp()
+  });
+  document.getElementById('new-task-modal').style.display='none';
+  ['new-task-title','new-task-tech','new-task-req','new-task-start'].forEach(id=>{document.getElementById(id).value='';});
+};
+
+/* ── seed initial data if collection is empty ── */
+const SEED = [
+  {title:'Concertar a mesa dos professores',unit:'BENGUELA',status:'Pendente',prio:'Média',req:'Chris',tech:['Miguel','Paulo'],start:'10 Jun',end:'11 Jun',dur:'2 dias',note:'',photos:[{src:'manutencao_fotos/mesa_antes1.jpg',cap:'Mesa — antes 1'},{src:'manutencao_fotos/mesa_antes2.jpg',cap:'Mesa — antes 2'},{src:'manutencao_fotos/mesa_antes3.jpg',cap:'Mesa — antes 3'},{src:'manutencao_fotos/mesa_antes4.jpg',cap:'Mesa — antes 4'}]},
+  {title:'Pintura nas partes pretas a cor cinza no alpendre da Main House',unit:'BENGUELA',status:'Resolvido',prio:'Média',req:'Soma',tech:['Miguel','Paulo'],start:'03 Jun',end:'03 Jun',dur:'3 horas',note:'',photos:[{src:'manutencao_fotos/alpendre.jpg',cap:'Alpendre'}]},
+  {title:'Pintura nos quadros',unit:'BENGUELA',status:'Em andamento',prio:'Média',req:'Soma',tech:['Miguel','Paulo'],start:'28 Mai',end:'28 Mai',dur:'',note:'',photos:[]},
+  {title:'Reparo porta da direção',unit:'LOBITO',status:'Resolvido',prio:'Média',req:'Direção',tech:['Sr. Domingos'],start:'16 Mai',end:'16 Mai',dur:'1 dia',note:'Reparou porta da teacher Angelina e dos professores',photos:[{src:'manutencao_fotos/porta_frame.jpg',cap:'Porta — moldura'},{src:'manutencao_fotos/porta_direcao.jpg',cap:'Porta direção'},{src:'manutencao_fotos/porta_sala.jpg',cap:'Porta sala'}]},
+  {title:'Pintura (mesas e porta)',unit:'LOBITO',status:'Resolvido',prio:'Média',req:'',tech:['Sr. Domingos'],start:'24 Mai',end:'24 Mai',dur:'',note:'Mesas dos professores e portas consertadas',photos:[]},
+  {title:'TROCA DE ESPELHO',unit:'LOBITO',status:'Resolvido',prio:'Média',req:'Direção',tech:['Sr. Domingos'],start:'25 Mai',end:'25 Mai',dur:'1 dia',note:'Espelhos WCs + porta-toalhas + ventoinha Benguela',photos:[{src:'manutencao_fotos/espelho_novo.jpg',cap:'Espelho novo'},{src:'manutencao_fotos/espelho_inst1.jpg',cap:'Instalação'},{src:'manutencao_fotos/espelho_inst2.jpg',cap:'Dispensador'},{src:'manutencao_fotos/espelho_wc.jpg',cap:'WC'},{src:'manutencao_fotos/espelho_novo2.jpg',cap:'Espelho novo 2'}]},
+  {title:'Substituir o lidificador quebrado',unit:'BENGUELA',status:'Pendente',prio:'Média',req:'Pascoal',tech:['Miguel'],start:'28 Mai',end:'28 Mai',dur:'5 min',note:'',photos:[]},
+  {title:'Reparar a cadeira da recepção',unit:'BENGUELA',status:'Resolvido',prio:'Média',req:'Teté',tech:['Miguel','Paulo'],start:'25 Mai',end:'25 Mai',dur:'45 min',note:'',photos:[{src:'manutencao_fotos/cadeira_antes.jpg',cap:'Cadeira — antes'},{src:'manutencao_fotos/cadeira_depois.jpg',cap:'Cadeira — depois'}]}
+];
+async function seedIfEmpty(){
+  const snap = await getDocs(collection(db,'tasks'));
+  if(snap.empty){
+    for(const t of SEED) await addDoc(collection(db,'tasks'),{...t, createdAt:serverTimestamp()});
+    console.log('Firestore seeded with 8 tasks');
+  }
+}
+seedIfEmpty();
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#f8fafc 0%,#fff 50%,rgba(238,242,255,.3) 100%);color:#0f172a;font-size:14px;min-height:100vh}
@@ -419,7 +618,7 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
             <button id="tvbtn-kanban" class="tvbtn" onclick="setTasksView('kanban')" title="Kanban"><i class="ti ti-layout-board"></i></button>
             <button id="tvbtn-sheet" class="tvbtn" onclick="setTasksView('sheet')" title="Tabela"><i class="ti ti-table"></i></button>
           </div>
-          <button class="btn btn-primary"><i class="ti ti-plus"></i> Nova tarefa</button>
+          <button class="btn btn-primary" onclick="document.getElementById('new-task-modal').style.display='flex'"><i class="ti ti-plus"></i> Nova tarefa</button>
         </div>
       </div>
 
@@ -491,25 +690,20 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
         <!-- === KANBAN VIEW === -->
         <div id="tv-kanban" style="display:none;grid-template-columns:repeat(4,1fr);gap:14px">
           <div class="kanban-col">
-            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Pendente</div><span class="kanban-count">2</span></div>
-            <div class="kanban-card" onclick="openTask(1)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Concertar a mesa dos professores</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><span style="font-size:10px;color:#94a3b8">10 Jun</span></div></div>
-            <div class="kanban-card" onclick="openTask(7)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Substituir o lidificador quebrado</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div></div><span style="font-size:10px;color:#94a3b8">28 Mai</span></div></div>
+            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Pendente</div><span class="kanban-count" id="kc-pend-count">0</span></div>
+            <div id="kc-pend"></div>
           </div>
           <div class="kanban-col">
-            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block"></span>Em Andamento</div><span class="kanban-count" style="background:#dbeafe;color:#1e40af">1</span></div>
-            <div class="kanban-card" onclick="openTask(3)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Pintura nos quadros</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><span style="font-size:10px;color:#94a3b8">28 Mai</span></div></div>
+            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block"></span>Em Andamento</div><span class="kanban-count" id="kc-prog-count" style="background:#dbeafe;color:#1e40af">0</span></div>
+            <div id="kc-prog"></div>
           </div>
           <div class="kanban-col">
-            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>Resolvido</div><span class="kanban-count" style="background:#dcfce7;color:#166534">5</span></div>
-            <div class="kanban-card" onclick="openTask(2)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Pintura nas partes pretas no alpendre...</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><span style="font-size:10px;color:#94a3b8">03 Jun</span></div></div>
-            <div class="kanban-card" onclick="openTask(4)"><div style="margin-bottom:5px"><span class="unit-l">LOBITO</span></div><div class="kanban-card-title">Reparo porta da direção</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#059669">SD</div></div><span style="font-size:10px;color:#94a3b8">16 Mai</span></div></div>
-            <div class="kanban-card" onclick="openTask(5)"><div style="margin-bottom:5px"><span class="unit-l">LOBITO</span></div><div class="kanban-card-title">Pintura (mesas e porta)</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#059669">SD</div></div><span style="font-size:10px;color:#94a3b8">24 Mai</span></div></div>
-            <div class="kanban-card" onclick="openTask(6)"><div style="margin-bottom:5px"><span class="unit-l">LOBITO</span></div><div class="kanban-card-title">TROCA DE ESPELHO</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#059669">SD</div></div><span style="font-size:10px;color:#94a3b8">25 Mai</span></div></div>
-            <div class="kanban-card" onclick="openTask(8)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Reparar a cadeira da recepção</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><span style="font-size:10px;color:#94a3b8">25 Mai</span></div></div>
+            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>Resolvido</div><span class="kanban-count" id="kc-done-count" style="background:#dcfce7;color:#166534">0</span></div>
+            <div id="kc-done"></div>
           </div>
           <div class="kanban-col">
-            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block"></span>Cancelado</div><span class="kanban-count">0</span></div>
-            <div style="text-align:center;padding:24px 12px;color:#94a3b8;font-size:12px"><i class="ti ti-circle-x" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4"></i>Nenhuma tarefa cancelada</div>
+            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block"></span>Cancelado</div><span class="kanban-count" id="kc-cancel-count">0</span></div>
+            <div id="kc-cancel"></div>
           </div>
         </div><!-- /tv-kanban -->
 
@@ -517,7 +711,7 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
         <div id="tv-sheet" style="display:none">
           <div class="card" style="overflow-x:auto">
             <table><thead><tr><th>#</th><th>Título da Tarefa</th><th>Unidade</th><th>Status</th><th>Prioridade</th><th>Responsáveis</th><th>Data Início</th><th>Duração</th><th>Fotos</th></tr></thead>
-            <tbody>
+            <tbody id="sheet-tbody">
               <tr style="cursor:pointer" onclick="openTask(1)"><td style="color:#94a3b8;font-weight:700">1</td><td><strong>Concertar a mesa dos professores</strong></td><td><span class="unit-b">BENGUELA</span></td><td><span class="pill pill-amber">Pendente</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Miguel, Paulo</td><td>10/06/2026</td><td>2 dias</td><td><div class="thumbs"><img class="thumb" src="manutencao_fotos/mesa_antes1.jpg" onclick="event.stopPropagation();lb(this.src,'Mesa — antes')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/mesa_antes2.jpg" onclick="event.stopPropagation();lb(this.src,'Mesa — antes')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/mesa_antes3.jpg" onclick="event.stopPropagation();lb(this.src,'Mesa — antes')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/mesa_antes4.jpg" onclick="event.stopPropagation();lb(this.src,'Mesa — antes')" style="width:32px;height:32px"></div></td></tr>
               <tr style="cursor:pointer" onclick="openTask(2)"><td style="color:#94a3b8;font-weight:700">2</td><td><strong>Pintura nas partes pretas a cor cinza no alpendre da Main House</strong></td><td><span class="unit-b">BENGUELA</span></td><td><span class="pill pill-green">Resolvido</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Miguel, Paulo</td><td>03/06/2026</td><td>3 horas</td><td><div class="thumbs"><img class="thumb" src="manutencao_fotos/alpendre.jpg" onclick="event.stopPropagation();lb(this.src,'Alpendre')" style="width:32px;height:32px"></div></td></tr>
               <tr style="cursor:pointer" onclick="openTask(3)"><td style="color:#94a3b8;font-weight:700">3</td><td><strong>Pintura nos quadros</strong></td><td><span class="unit-b">BENGUELA</span></td><td><span class="pill pill-blue">Em andamento</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Miguel, Paulo</td><td>28/05/2026</td><td>—</td><td>—</td></tr>
@@ -579,9 +773,9 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
             <div class="card">
               <div class="section-title">Ações Rápidas</div>
               <div style="display:flex;flex-direction:column;gap:8px">
-                <button class="btn" style="justify-content:center;background:#16a34a;color:#fff;border-color:#16a34a"><i class="ti ti-circle-check"></i> Marcar como Concluído</button>
-                <button class="btn" style="justify-content:center"><i class="ti ti-player-play"></i> Iniciar Trabalho</button>
-                <button class="btn" style="justify-content:center;color:#ef4444;border-color:#fecaca"><i class="ti ti-circle-x"></i> Cancelar Tarefa</button>
+                <button class="btn" onclick="markTaskDone()" style="justify-content:center;background:#16a34a;color:#fff;border-color:#16a34a"><i class="ti ti-circle-check"></i> Marcar como Concluído</button>
+                <button class="btn" onclick="startTask()" style="justify-content:center"><i class="ti ti-player-play"></i> Iniciar Trabalho</button>
+                <button class="btn" onclick="cancelTask()" style="justify-content:center;color:#ef4444;border-color:#fecaca"><i class="ti ti-circle-x"></i> Cancelar Tarefa</button>
               </div>
             </div>
           </div>
@@ -1489,6 +1683,30 @@ function lb(src,caption){
 function lbClose(){document.getElementById('lb').classList.remove('open')}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')lbClose()});
 </script>
+<!-- NOVA TAREFA MODAL -->
+<div id="new-task-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:460px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.2)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:17px;font-weight:700;color:#0f172a"><i class="ti ti-plus" style="color:#6366f1"></i> Nova Tarefa</div>
+      <span style="cursor:pointer;color:#94a3b8;font-size:20px" onclick="document.getElementById('new-task-modal').style.display='none'">&times;</span>
+    </div>
+    <div class="form-group"><label>Título *</label><input id="new-task-title" type="text" placeholder="Ex: Reparar janela da sala 3" style="width:100%"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label>Unidade</label><select id="new-task-unit" style="width:100%"><option>BENGUELA</option><option>LOBITO</option><option>CKC</option></select></div>
+      <div class="form-group"><label>Prioridade</label><select id="new-task-prio" style="width:100%"><option>Média</option><option>Alta</option><option>Urgente</option><option>Baixa</option></select></div>
+    </div>
+    <div class="form-group"><label>Técnico(s) <span style="font-weight:400;color:#94a3b8">(separar por vírgula)</span></label><input id="new-task-tech" type="text" placeholder="Ex: Miguel, Paulo" style="width:100%"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label>Solicitado por</label><input id="new-task-req" type="text" placeholder="Ex: Nancy" style="width:100%"></div>
+      <div class="form-group"><label>Data início</label><input id="new-task-start" type="text" placeholder="Ex: 16 Jun" style="width:100%"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+      <button class="btn" onclick="document.getElementById('new-task-modal').style.display='none'">Cancelar</button>
+      <button class="btn btn-primary" onclick="addNewTask()"><i class="ti ti-check"></i> Criar tarefa</button>
+    </div>
+  </div>
+</div>
+
 <div class="lb-overlay" id="lb" onclick="lbClose()">
   <span class="lb-close" onclick="lbClose()">&times;</span>
   <img class="lb-img" id="lb-img" src="" onclick="event.stopPropagation()">
