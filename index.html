@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nancy's Manutenção</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#f8fafc 0%,#fff 50%,rgba(238,242,255,.3) 100%);color:#0f172a;font-size:14px;min-height:100vh}
+.app{display:flex;min-height:100vh}
+
+/* SIDEBAR — WHITE */
+.sidebar{width:240px;background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;bottom:0;left:0;z-index:100}
+.sidebar-logo{padding:18px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #e2e8f0}
+.logo-icon{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#9333ea);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(99,102,241,.3)}
+.logo-icon i{color:#fff;font-size:20px}
+.logo-text{font-weight:700;font-size:15px;color:#0f172a;letter-spacing:-.2px}
+.logo-sub{font-size:11px;color:#64748b;margin-top:1px}
+nav{flex:1;padding:10px 8px;overflow-y:auto}
+.nav-section{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;padding:8px 8px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;color:#64748b;transition:all .15s;margin-bottom:1px;font-size:13px;font-weight:500}
+.nav-item:hover{background:#f1f5f9;color:#334155}
+.nav-item.active{color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.nav-item.active i{color:#fff}
+.nav-item i{font-size:17px;width:20px;text-align:center;flex-shrink:0}
+/* Per-item gradients */
+.nav-item[data-page="dashboard"].active{background:linear-gradient(to right,#6366f1,#9333ea)}
+.nav-item[data-page="tasks"].active{background:linear-gradient(to right,#3b82f6,#6366f1)}
+.nav-item[data-page="projects"].active{background:linear-gradient(to right,#8b5cf6,#9333ea)}
+.nav-item[data-page="materials"].active{background:linear-gradient(to right,#10b981,#0d9488)}
+.nav-item[data-page="tools"].active{background:linear-gradient(to right,#f59e0b,#ea580c)}
+.nav-item[data-page="chat"].active{background:linear-gradient(to right,#a855f7,#ec4899)}
+.nav-item[data-page="prices"].active{background:linear-gradient(to right,#ec4899,#f43f5e)}
+.nav-item[data-page="reports"].active{background:linear-gradient(to right,#f43f5e,#ef4444)}
+.nav-item[data-page="settings"].active{background:linear-gradient(to right,#64748b,#475569)}
+.nav-badge{margin-left:auto;background:#ef4444;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;min-width:18px;text-align:center}
+.nav-item.active .nav-badge{background:rgba(255,255,255,.3);color:#fff}
+.sidebar-user{padding:12px;border-top:1px solid #e2e8f0;display:flex;align-items:center;gap:10px}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#9333ea);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
+.user-name{font-size:13px;font-weight:600;color:#0f172a}
+.user-role{font-size:11px;color:#64748b}
+
+/* MAIN */
+.main{flex:1;margin-left:240px;overflow-y:auto}
+.page{display:none;padding:28px 32px}
+.page.active{display:block}
+
+/* TOP BAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px}
+.page-title{font-size:22px;font-weight:700;color:#0f172a}
+.page-sub{font-size:13px;color:#64748b;margin-top:2px}
+
+/* CARDS */
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card-sm{padding:14px 16px}
+.card-title{font-size:14px;font-weight:600;color:#0f172a;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-title i{font-size:16px;color:#94a3b8}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.04);position:relative;overflow:hidden;transition:box-shadow .2s}
+.stat-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.stat-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;flex-shrink:0}
+.stat-icon i{color:#fff;font-size:22px}
+.stat-label{font-size:11px;color:#64748b;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.stat-value{font-size:28px;font-weight:700;color:#0f172a;line-height:1}
+.stat-sub{font-size:11px;margin-top:6px;font-weight:600;display:inline-flex;align-items:center;gap:3px}
+.sub-green{color:#16a34a;background:#dcfce7;padding:2px 8px;border-radius:99px}
+.sub-amber{color:#92400e;background:#fef3c7;padding:2px 8px;border-radius:99px}
+.sub-blue{color:#1e40af;background:#dbeafe;padding:2px 8px;border-radius:99px}
+.sub-red{color:#991b1b;background:#fee2e2;padding:2px 8px;border-radius:99px}
+.sub-purple{color:#5b21b6;background:#ede9fe;padding:2px 8px;border-radius:99px}
+.sub-gray{color:#475569;background:#f1f5f9;padding:2px 8px;border-radius:99px}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;font-weight:700;color:#94a3b8;padding:8px 12px;border-bottom:1px solid #f1f5f9;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;background:#fafafa}
+th:first-child{border-radius:8px 0 0 0}
+th:last-child{border-radius:0 8px 0 0}
+td{padding:11px 12px;border-bottom:1px solid #f8fafc;font-size:13px;vertical-align:middle;color:#334155}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+
+/* PILLS */
+.pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap;gap:4px}
+.pill-green{background:#dcfce7;color:#166534}
+.pill-amber{background:#fef3c7;color:#92400e}
+.pill-blue{background:#dbeafe;color:#1e40af}
+.pill-red{background:#fee2e2;color:#991b1b}
+.pill-gray{background:#f1f5f9;color:#475569}
+.pill-purple{background:#ede9fe;color:#5b21b6}
+.pill-indigo{background:#e0e7ff;color:#3730a3}
+.pill-teal{background:#ccfbf1;color:#0f766e}
+.pill-orange{background:#ffedd5;color:#c2410c}
+
+/* UNIT BADGES — gradients, rounded-full */
+.unit-b{background:linear-gradient(to right,#3b82f6,#4f46e5);color:#fff;border-radius:9999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;display:inline-block;box-shadow:0 1px 4px rgba(59,130,246,.3)}
+.unit-l{background:linear-gradient(to right,#10b981,#0d9488);color:#fff;border-radius:9999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;display:inline-block;box-shadow:0 1px 4px rgba(16,185,129,.3)}
+.unit-c{background:linear-gradient(to right,#f59e0b,#ea580c);color:#fff;border-radius:9999px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;display:inline-block;box-shadow:0 1px 4px rgba(245,158,11,.3)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1px solid #e2e8f0;background:#fff;color:#334155;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s;white-space:nowrap}
+.btn:hover{background:#f8fafc;border-color:#cbd5e1}
+.btn-primary{background:linear-gradient(to right,#6366f1,#8b5cf6);color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(99,102,241,.3)}
+.btn-primary:hover{background:linear-gradient(to right,#4f46e5,#7c3aed);box-shadow:0 4px 12px rgba(99,102,241,.4)}
+.btn-sm{padding:5px 10px;font-size:12px;border-radius:7px}
+.btn i{font-size:15px}
+.icon-btn{width:30px;height:30px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#94a3b8;transition:all .15s;flex-shrink:0}
+.icon-btn:hover{background:#f1f5f9;color:#334155;border-color:#cbd5e1}
+.icon-btn i{font-size:14px}
+
+/* PROGRESS */
+.progress-bar{height:6px;border-radius:99px;background:#f1f5f9;overflow:hidden}
+.progress-fill{height:100%;border-radius:99px;background:linear-gradient(to right,#6366f1,#8b5cf6);transition:width .3s}
+
+/* FORM */
+input,select,textarea{padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#334155;font-size:13px;font-family:inherit;outline:none;transition:border .15s}
+input:focus,select:focus,textarea:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:600}
+.form-group{margin-bottom:14px}
+
+/* CHAT */
+.chat-msg{display:flex;gap:10px;margin-bottom:14px}
+.chat-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#9333ea);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;flex-shrink:0;font-weight:700}
+.chat-bubble{background:#f1f5f9;border-radius:0 12px 12px 12px;padding:9px 13px;font-size:13px;max-width:420px;color:#334155;line-height:1.55}
+.chat-msg.mine{flex-direction:row-reverse}
+.chat-msg.mine .chat-bubble{background:#eef2ff;border-radius:12px 0 12px 12px;color:#3730a3}
+.chat-time{font-size:10px;color:#94a3b8;margin-top:4px}
+.chat-sender{font-size:11px;font-weight:700;color:#475569;margin-bottom:3px}
+
+/* CHART BARS */
+.chart-bar-wrap{display:flex;flex-direction:column;gap:12px}
+.chart-bar-row{display:flex;align-items:center;gap:10px;font-size:12px}
+.chart-bar-label{width:120px;color:#64748b;font-weight:500;flex-shrink:0}
+.chart-bar-track{flex:1;height:18px;background:#f1f5f9;border-radius:99px;overflow:hidden}
+.chart-bar-fill{height:100%;border-radius:99px;background:linear-gradient(to right,#6366f1,#8b5cf6)}
+.chart-bar-val{width:110px;font-weight:700;font-size:12px;color:#334155;text-align:right}
+
+/* KANBAN */
+.kanban{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.kanban-col{background:#f8fafc;border-radius:14px;padding:12px}
+.kanban-col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.kanban-col-title{font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.07em}
+.kanban-count{background:#e2e8f0;color:#64748b;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px}
+.kanban-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:13px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.kanban-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08);border-color:#c7d2fe;transform:translateY(-1px)}
+.kanban-card:last-child{margin-bottom:0}
+.kanban-card-title{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:6px}
+.kanban-card-meta{font-size:11px;color:#94a3b8;margin-bottom:8px}
+.kanban-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+
+/* TASK ROW */
+.task-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f8fafc}
+.task-item:last-child{border-bottom:none}
+.task-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* PRIORITY DOT */
+.prio-urgente{background:#ef4444}
+.prio-alta{background:#f97316}
+.prio-media{background:#f59e0b}
+.prio-baixa{background:#22c55e}
+
+/* AUDIO BUTTON */
+.audio-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;background:#eef2ff;color:#4338ca;border:none;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600}
+.audio-btn:hover{background:#e0e7ff}
+
+/* INVOICE STATUS */
+.inv-ok{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;background:#dcfce7;color:#166534;font-size:11px;font-weight:700}
+.inv-pend{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700}
+.inv-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:99px;background:#dbeafe;color:#1e40af;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:inherit}
+.inv-btn:hover{background:#bfdbfe}
+
+/* DIVIDER */
+.divider{border:none;border-top:1px solid #f1f5f9;margin:14px 0}
+.section-title{font-size:13px;font-weight:700;color:#475569;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f1f5f9}
+.approval-box{border:2px dashed #e2e8f0;border-radius:12px;padding:16px;text-align:center;margin-top:12px}
+
+/* VIEW TOGGLE */
+.tvbtn{padding:8px 11px;background:#fff;border:none;cursor:pointer;color:#64748b;font-size:16px;transition:all .15s;line-height:1}
+.tvbtn:hover{background:#f1f5f9;color:#334155}
+.tvbtn.tvbtn-act{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.tvbtn i{font-size:16px;display:block}
+
+/* TASK CARDS (grid view) */
+.tasks-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.tcard{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.04);cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:12px}
+.tcard:hover{box-shadow:0 6px 18px rgba(0,0,0,.09);transform:translateY(-2px);border-color:#c7d2fe}
+.tcard-header{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tcard-prio{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#64748b;background:#f1f5f9;padding:2px 8px;border-radius:99px}
+.tcard-title{font-size:14px;font-weight:700;color:#0f172a;line-height:1.4;flex:1}
+.tcard-meta{display:flex;gap:12px;font-size:11px;color:#94a3b8;font-weight:600}
+.tcard-meta i{font-size:12px;vertical-align:middle;margin-right:3px}
+.tcard-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+.tavatar{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0;border:2px solid #fff}
+
+/* PHOTOS */
+.thumb{width:44px;height:44px;border-radius:7px;object-fit:cover;cursor:pointer;border:1px solid #e2e8f0;transition:transform .15s;flex-shrink:0}
+.thumb:hover{transform:scale(1.1);box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.thumbs{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.lb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.lb-overlay.open{display:flex}
+.lb-img{max-width:90vw;max-height:82vh;border-radius:10px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.lb-caption{color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:.02em}
+.lb-close{position:absolute;top:16px;right:20px;color:#fff;font-size:28px;cursor:pointer;line-height:1;opacity:.8}
+.lb-close:hover{opacity:1}
+@media(max-width:1024px){
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .grid-2{grid-template-columns:1fr}
+  .kanban{grid-template-columns:1fr}
+  .sidebar{width:200px}
+  .main{margin-left:200px}
+}
+@media(max-width:768px){
+  .sidebar{width:0;overflow:hidden}
+  .main{margin-left:0}
+  .page{padding:16px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="ti ti-tool"></i></div>
+      <div>
+        <div class="logo-text">Nancy's</div>
+        <div class="logo-sub">Manutenção · Angola</div>
+      </div>
+    </div>
+    <nav>
+      <div class="nav-section">Principal</div>
+      <a class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</a>
+      <a class="nav-item" data-page="tasks" onclick="showPage('tasks')"><i class="ti ti-clipboard-list"></i> Tarefas <span class="nav-badge">2</span></a>
+      <a class="nav-item" data-page="projects" onclick="showPage('projects')"><i class="ti ti-folder-kanban"></i> Projectos</a>
+      <div class="nav-section">Stock</div>
+      <a class="nav-item" data-page="materials" onclick="showPage('materials')"><i class="ti ti-package"></i> Materiais</a>
+      <a class="nav-item" data-page="tools" onclick="showPage('tools')"><i class="ti ti-tool"></i> Ferramentas</a>
+      <a class="nav-item" data-page="prices" onclick="showPage('prices')"><i class="ti ti-tag"></i> Preços</a>
+      <div class="nav-section">Comunicação</div>
+      <a class="nav-item" data-page="chat" onclick="showPage('chat')"><i class="ti ti-message-circle"></i> Chat</a>
+      <div class="nav-section">Gestão</div>
+      <a class="nav-item" data-page="reports" onclick="showPage('reports')"><i class="ti ti-chart-bar"></i> Relatórios</a>
+      <a class="nav-item" data-page="settings" onclick="showPage('settings')"><i class="ti ti-settings"></i> Configurações</a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="avatar">NA</div>
+      <div style="flex:1;min-width:0">
+        <div class="user-name">Nancy Admin</div>
+        <div class="user-role">Administradora</div>
+      </div>
+      <div class="icon-btn" title="Terminar sessão"><i class="ti ti-logout"></i></div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ==================== DASHBOARD ==================== -->
+    <div class="page active" id="page-dashboard">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Visão geral · 12 de Junho de 2026, Quinta-feira</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="showPage('tasks')"><i class="ti ti-plus"></i> Nova tarefa</button>
+          <button class="btn btn-sm btn-primary" onclick="showPage('projects')"><i class="ti ti-folder-plus"></i> Novo projecto</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#6366f1,#9333ea)"><i class="ti ti-clipboard-list"></i></div>
+          <div class="stat-label">Tarefas pendentes</div>
+          <div class="stat-value">2</div>
+          <div class="stat-sub"><span class="sub-amber">1 em andamento</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#3b82f6,#6366f1)"><i class="ti ti-folder-kanban"></i></div>
+          <div class="stat-label">Projectos activos</div>
+          <div class="stat-value">3</div>
+          <div class="stat-sub"><span class="sub-blue">2 em andamento</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#10b981,#0d9488)"><i class="ti ti-package"></i></div>
+          <div class="stat-label">Materiais registados</div>
+          <div class="stat-value">12</div>
+          <div class="stat-sub"><span class="sub-amber">6 sem factura</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#f59e0b,#ea580c)"><i class="ti ti-currency-dollar"></i></div>
+          <div class="stat-label">Gastos NOVA CASA</div>
+          <div class="stat-value" style="font-size:18px">17.628.000 Kz</div>
+          <div class="stat-sub"><span class="sub-purple">LOBITO · Jan 2026</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Tarefas em aberto <i class="ti ti-alert-triangle" style="color:#f59e0b"></i></div>
+          <div class="task-item">
+            <div class="task-dot prio-media"></div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:#0f172a">Concertar a mesa dos professores</div>
+              <div style="font-size:11px;color:#94a3b8">BENGUELA · Chris → Miguel, Paulo · 10–11 Jun</div>
+            </div>
+            <span class="pill pill-amber">Pendente</span>
+          </div>
+          <div class="task-item">
+            <div class="task-dot prio-media"></div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:#0f172a">Substituir o lidificador quebrado</div>
+              <div style="font-size:11px;color:#94a3b8">BENGUELA · Pascoal → Miguel · 28 Mai</div>
+            </div>
+            <span class="pill pill-amber">Pendente</span>
+          </div>
+          <div class="task-item">
+            <div class="task-dot prio-alta"></div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:#0f172a">Pintura nos quadros</div>
+              <div style="font-size:11px;color:#94a3b8">BENGUELA · Soma → Miguel, Paulo · 28 Mai</div>
+            </div>
+            <span class="pill pill-blue">Em andamento</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Projectos activos <i class="ti ti-folder-kanban"></i></div>
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:5px">
+              <div>
+                <span style="font-weight:600;color:#0f172a">NOVA CASA - LOBITO</span>
+                <span class="unit-l" style="margin-left:6px">LOBITO</span>
+              </div>
+              <span style="color:#6366f1;font-weight:700">Em andamento</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:70%"></div></div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:3px">17.628.000 Kz gastos de 25.000.000 Kz orç. · Resp: Soma</div>
+          </div>
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:5px">
+              <div>
+                <span style="font-weight:600;color:#0f172a">Construção 2 Novas Salas</span>
+                <span class="unit-c" style="margin-left:6px">CKC</span>
+              </div>
+              <span style="color:#f59e0b;font-weight:700">Em andamento</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:30%;background:linear-gradient(to right,#f59e0b,#ea580c)"></div></div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:3px">Orç. 5.000.000 Kz · Início: Nov 2024 · Resp: Soma</div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:5px">
+              <div>
+                <span style="font-weight:600;color:#0f172a">Escritório da Directora</span>
+                <span class="unit-b" style="margin-left:6px">BENGUELA</span>
+              </div>
+              <span style="color:#94a3b8;font-weight:700">Planeado</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:0%;background:#94a3b8"></div></div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:3px">Orç. a definir · 21–29 Mar 2026</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Materiais — últimas compras <i class="ti ti-package" style="color:#f59e0b"></i></div>
+          <table><thead><tr><th>Material</th><th>Unidade</th><th>Total</th><th>Factura</th></tr></thead><tbody>
+            <tr><td>Térmico sprint 12000 BTU</td><td><span class="unit-b">BENGUELA</span></td><td style="font-weight:700">2.200 Kz</td><td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Teté</span></td></tr>
+            <tr><td>Compressor sprint 9000 BTU</td><td><span class="unit-b">BENGUELA</span></td><td style="font-weight:700">10.700 Kz</td><td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Teté</span></td></tr>
+            <tr><td>Cantoneira</td><td><span class="unit-l">LOBITO</span></td><td style="font-weight:700">8.000 Kz</td><td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Pendente</span></td></tr>
+            <tr><td>Eletrodos</td><td><span class="unit-l">LOBITO</span></td><td style="font-weight:700">4.500 Kz</td><td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Pendente</span></td></tr>
+          </tbody></table>
+        </div>
+        <div class="card">
+          <div class="card-title">Equipa · Actividade recente <i class="ti ti-users"></i></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="avatar" style="width:32px;height:32px;font-size:11px;background:#dc2626">MI</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Miguel</div><div style="font-size:11px;color:#64748b">Em andamento: Pintura nos quadros (BENGUELA)</div></div>
+              <span style="font-size:11px;color:#94a3b8">28 Mai</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="avatar" style="width:32px;height:32px;font-size:11px;background:#059669">SR</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Sr. Domingos</div><div style="font-size:11px;color:#64748b">Resolveu: Troca de espelho WCs (LOBITO)</div></div>
+              <span style="font-size:11px;color:#94a3b8">25 Mai</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="avatar" style="width:32px;height:32px;font-size:11px;background:#0d9488">SO</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Soma</div><div style="font-size:11px;color:#64748b">Comprou materiais AVAC — Térmicos, Vareta, Compressor</div></div>
+              <span style="font-size:11px;color:#94a3b8">21 Mai</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="avatar" style="width:32px;height:32px;font-size:11px;background:#7c3aed">AP</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:600">Apolinário</div><div style="font-size:11px;color:#64748b">Transportou Gerador para NOVA CASA LOBITO</div></div>
+              <span style="font-size:11px;color:#94a3b8">Jan 2026</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAREFAS ==================== -->
+    <div class="page" id="page-tasks">
+
+      <!-- TOPBAR -->
+      <div class="topbar" id="tasks-topbar-wrap">
+        <div>
+          <div class="page-title">Tarefas</div>
+          <div class="page-sub">Ordens de trabalho das 3 unidades · 8 registos</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;border:1px solid #e2e8f0;border-radius:9px;overflow:hidden">
+            <button id="tvbtn-grid" class="tvbtn tvbtn-act" onclick="setTasksView('grid')" title="Grelha"><i class="ti ti-layout-grid"></i></button>
+            <button id="tvbtn-kanban" class="tvbtn" onclick="setTasksView('kanban')" title="Kanban"><i class="ti ti-layout-board"></i></button>
+            <button id="tvbtn-sheet" class="tvbtn" onclick="setTasksView('sheet')" title="Tabela"><i class="ti ti-table"></i></button>
+          </div>
+          <button class="btn btn-primary"><i class="ti ti-plus"></i> Nova tarefa</button>
+        </div>
+      </div>
+
+      <!-- FILTERS -->
+      <div id="tasks-filters-wrap" class="card" style="margin-bottom:16px;padding:14px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="text" placeholder="Pesquisar tarefas..." style="width:220px">
+          <select style="width:130px"><option>Todas as unidades</option><option>BENGUELA</option><option>LOBITO</option><option>CKC</option></select>
+          <select style="width:140px"><option>Todos os estados</option><option>Pendente</option><option>Em andamento</option><option>Resolvido</option></select>
+          <select style="width:140px"><option>Todos os técnicos</option><option>Miguel</option><option>Sr. Domingos</option><option>Paulo</option></select>
+        </div>
+      </div>
+
+      <!-- VIEWS WRAPPER -->
+      <div id="tasks-views-wrap">
+
+        <!-- === GRID VIEW === -->
+        <div id="tv-grid" class="tasks-grid">
+          <div class="tcard" onclick="openTask(1)">
+            <div class="tcard-header"><span class="unit-b">BENGUELA</span><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span><span class="pill pill-amber" style="margin-left:auto">Pendente</span></div>
+            <div class="tcard-title">Concertar a mesa dos professores</div>
+            <div class="tcard-meta"><span><i class="ti ti-calendar"></i>10 Jun</span><span><i class="ti ti-clock"></i>2 dias</span><span><i class="ti ti-photo"></i>4</span></div>
+            <div class="tcard-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><i class="ti ti-chevron-right" style="color:#94a3b8"></i></div>
+          </div>
+          <div class="tcard" onclick="openTask(2)">
+            <div class="tcard-header"><span class="unit-b">BENGUELA</span><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span><span class="pill pill-green" style="margin-left:auto">Resolvido</span></div>
+            <div class="tcard-title">Pintura nas partes pretas a cor cinza no alpendre...</div>
+            <div class="tcard-meta"><span><i class="ti ti-calendar"></i>03 Jun</span><span><i class="ti ti-clock"></i>3 horas</span><span><i class="ti ti-photo"></i>1</span></div>
+            <div class="tcard-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><i class="ti ti-chevron-right" style="color:#94a3b8"></i></div>
+          </div>
+          <div class="tcard" onclick="openTask(3)">
+            <div class="tcard-header"><span class="unit-b">BENGUELA</span><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span><span class="pill pill-blue" style="margin-left:auto">Em andamento</span></div>
+            <div class="tcard-title">Pintura nos quadros</div>
+            <div class="tcard-meta"><span><i class="ti ti-calendar"></i>28 Mai</span><span><i class="ti ti-clock"></i>—</span><span><i class="ti ti-photo"></i>0</span></div>
+            <div class="tcard-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><i class="ti ti-chevron-right" style="color:#94a3b8"></i></div>
+          </div>
+          <div class="tcard" onclick="openTask(4)">
+            <div class="tcard-header"><span class="unit-l">LOBITO</span><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span><span class="pill pill-green" style="margin-left:auto">Resolvido</span></div>
+            <div class="tcard-title">Reparo porta da direção</div>
+            <div class="tcard-meta"><span><i class="ti ti-calendar"></i>16 Mai</span><span><i class="ti ti-clock"></i>1 dia</span><span><i class="ti ti-photo"></i>3</span></div>
+            <div class="tcard-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#059669">SD</div></div><i class="ti ti-chevron-right" style="color:#94a3b8"></i></div>
+          </div>
+          <div class="tcard" onclick="openTask(5)">
+            <div class="tcard-header"><span class="unit-l">LOBITO</span><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span><span class="pill pill-green" style="margin-left:auto">Resolvido</span></div>
+            <div class="tcard-title">Pintura (mesas e porta)</div>
+            <div class="tcard-meta"><span><i class="ti ti-calendar"></i>24 Mai</span><span><i class="ti ti-clock"></i>—</span><span><i class="ti ti-photo"></i>0</span></div>
+            <div class="tcard-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#059669">SD</div></div><i class="ti ti-chevron-right" style="color:#94a3b8"></i></div>
+          </div>
+          <div class="tcard" onclick="openTask(6)">
+            <div class="tcard-header"><span class="unit-l">LOBITO</span><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span><span class="pill pill-green" style="margin-left:auto">Resolvido</span></div>
+            <div class="tcard-title">TROCA DE ESPELHO</div>
+            <div class="tcard-meta"><span><i class="ti ti-calendar"></i>25 Mai</span><span><i class="ti ti-clock"></i>1 dia</span><span><i class="ti ti-photo"></i>5</span></div>
+            <div class="tcard-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#059669">SD</div></div><i class="ti ti-chevron-right" style="color:#94a3b8"></i></div>
+          </div>
+          <div class="tcard" onclick="openTask(7)">
+            <div class="tcard-header"><span class="unit-b">BENGUELA</span><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span><span class="pill pill-amber" style="margin-left:auto">Pendente</span></div>
+            <div class="tcard-title">Substituir o lidificador quebrado</div>
+            <div class="tcard-meta"><span><i class="ti ti-calendar"></i>28 Mai</span><span><i class="ti ti-clock"></i>5 min</span><span><i class="ti ti-photo"></i>0</span></div>
+            <div class="tcard-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div></div><i class="ti ti-chevron-right" style="color:#94a3b8"></i></div>
+          </div>
+          <div class="tcard" onclick="openTask(8)">
+            <div class="tcard-header"><span class="unit-b">BENGUELA</span><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span><span class="pill pill-green" style="margin-left:auto">Resolvido</span></div>
+            <div class="tcard-title">Reparar a cadeira da recepção</div>
+            <div class="tcard-meta"><span><i class="ti ti-calendar"></i>25 Mai</span><span><i class="ti ti-clock"></i>45 min</span><span><i class="ti ti-photo"></i>2</span></div>
+            <div class="tcard-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><i class="ti ti-chevron-right" style="color:#94a3b8"></i></div>
+          </div>
+        </div><!-- /tv-grid -->
+
+        <!-- === KANBAN VIEW === -->
+        <div id="tv-kanban" style="display:none;grid-template-columns:repeat(4,1fr);gap:14px">
+          <div class="kanban-col">
+            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Pendente</div><span class="kanban-count">2</span></div>
+            <div class="kanban-card" onclick="openTask(1)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Concertar a mesa dos professores</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><span style="font-size:10px;color:#94a3b8">10 Jun</span></div></div>
+            <div class="kanban-card" onclick="openTask(7)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Substituir o lidificador quebrado</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div></div><span style="font-size:10px;color:#94a3b8">28 Mai</span></div></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block"></span>Em Andamento</div><span class="kanban-count" style="background:#dbeafe;color:#1e40af">1</span></div>
+            <div class="kanban-card" onclick="openTask(3)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Pintura nos quadros</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><span style="font-size:10px;color:#94a3b8">28 Mai</span></div></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block"></span>Resolvido</div><span class="kanban-count" style="background:#dcfce7;color:#166534">5</span></div>
+            <div class="kanban-card" onclick="openTask(2)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Pintura nas partes pretas no alpendre...</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><span style="font-size:10px;color:#94a3b8">03 Jun</span></div></div>
+            <div class="kanban-card" onclick="openTask(4)"><div style="margin-bottom:5px"><span class="unit-l">LOBITO</span></div><div class="kanban-card-title">Reparo porta da direção</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#059669">SD</div></div><span style="font-size:10px;color:#94a3b8">16 Mai</span></div></div>
+            <div class="kanban-card" onclick="openTask(5)"><div style="margin-bottom:5px"><span class="unit-l">LOBITO</span></div><div class="kanban-card-title">Pintura (mesas e porta)</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#059669">SD</div></div><span style="font-size:10px;color:#94a3b8">24 Mai</span></div></div>
+            <div class="kanban-card" onclick="openTask(6)"><div style="margin-bottom:5px"><span class="unit-l">LOBITO</span></div><div class="kanban-card-title">TROCA DE ESPELHO</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#059669">SD</div></div><span style="font-size:10px;color:#94a3b8">25 Mai</span></div></div>
+            <div class="kanban-card" onclick="openTask(8)"><div style="margin-bottom:5px"><span class="unit-b">BENGUELA</span></div><div class="kanban-card-title">Reparar a cadeira da recepção</div><div class="kanban-card-footer"><div style="display:flex;gap:3px"><div class="tavatar" style="background:#dc2626">M</div><div class="tavatar" style="background:#7c3aed">P</div></div><span style="font-size:10px;color:#94a3b8">25 Mai</span></div></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-header"><div class="kanban-col-title" style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#94a3b8;display:inline-block"></span>Cancelado</div><span class="kanban-count">0</span></div>
+            <div style="text-align:center;padding:24px 12px;color:#94a3b8;font-size:12px"><i class="ti ti-circle-x" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4"></i>Nenhuma tarefa cancelada</div>
+          </div>
+        </div><!-- /tv-kanban -->
+
+        <!-- === SPREADSHEET VIEW === -->
+        <div id="tv-sheet" style="display:none">
+          <div class="card" style="overflow-x:auto">
+            <table><thead><tr><th>#</th><th>Título da Tarefa</th><th>Unidade</th><th>Status</th><th>Prioridade</th><th>Responsáveis</th><th>Data Início</th><th>Duração</th><th>Fotos</th></tr></thead>
+            <tbody>
+              <tr style="cursor:pointer" onclick="openTask(1)"><td style="color:#94a3b8;font-weight:700">1</td><td><strong>Concertar a mesa dos professores</strong></td><td><span class="unit-b">BENGUELA</span></td><td><span class="pill pill-amber">Pendente</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Miguel, Paulo</td><td>10/06/2026</td><td>2 dias</td><td><div class="thumbs"><img class="thumb" src="manutencao_fotos/mesa_antes1.jpg" onclick="event.stopPropagation();lb(this.src,'Mesa — antes')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/mesa_antes2.jpg" onclick="event.stopPropagation();lb(this.src,'Mesa — antes')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/mesa_antes3.jpg" onclick="event.stopPropagation();lb(this.src,'Mesa — antes')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/mesa_antes4.jpg" onclick="event.stopPropagation();lb(this.src,'Mesa — antes')" style="width:32px;height:32px"></div></td></tr>
+              <tr style="cursor:pointer" onclick="openTask(2)"><td style="color:#94a3b8;font-weight:700">2</td><td><strong>Pintura nas partes pretas a cor cinza no alpendre da Main House</strong></td><td><span class="unit-b">BENGUELA</span></td><td><span class="pill pill-green">Resolvido</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Miguel, Paulo</td><td>03/06/2026</td><td>3 horas</td><td><div class="thumbs"><img class="thumb" src="manutencao_fotos/alpendre.jpg" onclick="event.stopPropagation();lb(this.src,'Alpendre')" style="width:32px;height:32px"></div></td></tr>
+              <tr style="cursor:pointer" onclick="openTask(3)"><td style="color:#94a3b8;font-weight:700">3</td><td><strong>Pintura nos quadros</strong></td><td><span class="unit-b">BENGUELA</span></td><td><span class="pill pill-blue">Em andamento</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Miguel, Paulo</td><td>28/05/2026</td><td>—</td><td>—</td></tr>
+              <tr style="cursor:pointer" onclick="openTask(4)"><td style="color:#94a3b8;font-weight:700">4</td><td><strong>Reparo porta da direção</strong><div style="font-size:11px;color:#94a3b8">Reparou porta da teacher Angelina e dos professores</div></td><td><span class="unit-l">LOBITO</span></td><td><span class="pill pill-green">Resolvido</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Sr. Domingos</td><td>16/05/2026</td><td>1 dia</td><td><div class="thumbs"><img class="thumb" src="manutencao_fotos/porta_frame.jpg" onclick="event.stopPropagation();lb(this.src,'Porta — moldura')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/porta_direcao.jpg" onclick="event.stopPropagation();lb(this.src,'Porta direção')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/porta_sala.jpg" onclick="event.stopPropagation();lb(this.src,'Porta sala')" style="width:32px;height:32px"></div></td></tr>
+              <tr style="cursor:pointer" onclick="openTask(5)"><td style="color:#94a3b8;font-weight:700">5</td><td><strong>Pintura (mesas e porta)</strong><div style="font-size:11px;color:#94a3b8">Mesas dos professores e portas consertadas</div></td><td><span class="unit-l">LOBITO</span></td><td><span class="pill pill-green">Resolvido</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Sr. Domingos</td><td>24/05/2026</td><td>—</td><td>—</td></tr>
+              <tr style="cursor:pointer" onclick="openTask(6)"><td style="color:#94a3b8;font-weight:700">6</td><td><strong>TROCA DE ESPELHO</strong><div style="font-size:11px;color:#94a3b8">Espelhos WCs + porta-toalhas + ventoinha Benguela</div></td><td><span class="unit-l">LOBITO</span></td><td><span class="pill pill-green">Resolvido</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Sr. Domingos</td><td>25/05/2026</td><td>1 dia</td><td><div class="thumbs"><img class="thumb" src="manutencao_fotos/espelho_novo.jpg" onclick="event.stopPropagation();lb(this.src,'Espelho novo')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/espelho_inst1.jpg" onclick="event.stopPropagation();lb(this.src,'Instalação')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/espelho_wc.jpg" onclick="event.stopPropagation();lb(this.src,'WC')" style="width:32px;height:32px"><span style="font-size:11px;color:#94a3b8;padding:2px 6px;background:#f1f5f9;border-radius:6px">+2</span></div></td></tr>
+              <tr style="cursor:pointer" onclick="openTask(7)"><td style="color:#94a3b8;font-weight:700">7</td><td><strong>Substituir o lidificador quebrado</strong></td><td><span class="unit-b">BENGUELA</span></td><td><span class="pill pill-amber">Pendente</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Miguel</td><td>28/05/2026</td><td>5 min</td><td>—</td></tr>
+              <tr style="cursor:pointer" onclick="openTask(8)"><td style="color:#94a3b8;font-weight:700">8</td><td><strong>Reparar a cadeira da recepção</strong></td><td><span class="unit-b">BENGUELA</span></td><td><span class="pill pill-green">Resolvido</span></td><td><span class="tcard-prio"><i class="ti ti-arrow-right"></i> Média</span></td><td>Miguel, Paulo</td><td>25/05/2026</td><td>45 min</td><td><div class="thumbs"><img class="thumb" src="manutencao_fotos/cadeira_antes.jpg" onclick="event.stopPropagation();lb(this.src,'Cadeira — antes')" style="width:32px;height:32px"><img class="thumb" src="manutencao_fotos/cadeira_depois.jpg" onclick="event.stopPropagation();lb(this.src,'Cadeira — depois')" style="width:32px;height:32px"></div></td></tr>
+            </tbody></table>
+          </div>
+        </div><!-- /tv-sheet -->
+
+      </div><!-- /tasks-views-wrap -->
+
+      <!-- === TASK DETAIL === -->
+      <div id="tasks-detail-wrap" style="display:none">
+        <div class="topbar">
+          <div style="display:flex;align-items:center;gap:12px">
+            <button class="btn btn-sm" onclick="closeTask()"><i class="ti ti-arrow-left"></i> Tarefas</button>
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span id="td-unit-badge"></span><span id="td-prio-tag" class="tcard-prio"></span></div>
+              <div class="page-title" id="td-title" style="font-size:20px"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm"><i class="ti ti-edit"></i> Editar</button>
+            <button class="btn btn-sm" style="border-color:#fecaca;color:#ef4444"><i class="ti ti-trash"></i></button>
+          </div>
+        </div>
+        <div class="grid-2" style="align-items:start">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="card">
+              <div style="margin-bottom:16px"><span id="td-status-pill" class="pill"></span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #f1f5f9"><div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px"><i class="ti ti-calendar" style="font-size:11px"></i> Início</div><div style="font-weight:700;font-size:14px;color:#0f172a" id="td-start"></div></div>
+                <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #f1f5f9"><div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px"><i class="ti ti-calendar-check" style="font-size:11px"></i> Término</div><div style="font-weight:700;font-size:14px;color:#0f172a" id="td-end"></div></div>
+                <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #f1f5f9"><div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px"><i class="ti ti-clock" style="font-size:11px"></i> Duração</div><div style="font-weight:700;font-size:14px;color:#0f172a" id="td-dur"></div></div>
+                <div style="padding:12px;background:#f8fafc;border-radius:10px;border:1px solid #f1f5f9"><div style="font-size:10px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px"><i class="ti ti-user" style="font-size:11px"></i> Solicitado por</div><div style="font-weight:700;font-size:14px;color:#0f172a" id="td-req"></div></div>
+              </div>
+            </div>
+            <div class="card"><div class="section-title"><i class="ti ti-users" style="font-size:13px"></i> Equipa Atribuída</div><div id="td-team" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
+            <div class="card" id="td-photos-card" style="display:none"><div class="section-title"><i class="ti ti-photo" style="font-size:13px"></i> Fotos</div><div id="td-photos" class="thumbs" style="gap:8px"></div></div>
+            <div class="card">
+              <div class="section-title" style="display:flex;align-items:center;justify-content:space-between"><span><i class="ti ti-package" style="font-size:13px"></i> Materiais</span><button class="btn btn-sm"><i class="ti ti-plus"></i> Adicionar</button></div>
+              <div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">Nenhum material adicionado</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:14px;padding:20px;color:#fff">
+              <div style="font-size:14px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px"><i class="ti ti-currency-dollar"></i> Resumo de Custos</div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;justify-content:space-between;font-size:13px"><span style="opacity:.85">Custo do Trabalho</span><span style="font-weight:700">0 Kz</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px"><span style="opacity:.85">Materiais</span><span style="font-weight:700">0 Kz</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px"><span style="opacity:.85">Transporte</span><span style="font-weight:700">0 Kz</span></div>
+                <div style="border-top:1px solid rgba(255,255,255,.25);margin:4px 0"></div>
+                <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700"><span>Total</span><span>0 Kz</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-title">Ações Rápidas</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <button class="btn" style="justify-content:center;background:#16a34a;color:#fff;border-color:#16a34a"><i class="ti ti-circle-check"></i> Marcar como Concluído</button>
+                <button class="btn" style="justify-content:center"><i class="ti ti-player-play"></i> Iniciar Trabalho</button>
+                <button class="btn" style="justify-content:center;color:#ef4444;border-color:#fecaca"><i class="ti ti-circle-x"></i> Cancelar Tarefa</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /tasks-detail-wrap -->
+
+    </div><!-- /page-tasks -->
+
+    <!-- ==================== PROJECTOS ==================== -->
+    <div class="page" id="page-projects">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Projectos</div>
+          <div class="page-sub">Gestão de obras e remodelações · 3 projectos</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <select style="width:130px">
+            <option>Todas as unidades</option>
+            <option>BENGUELA</option>
+            <option>LOBITO</option>
+            <option>CKC</option>
+          </select>
+          <button class="btn btn-primary"><i class="ti ti-plus"></i> Novo projecto</button>
+        </div>
+      </div>
+      <div class="kanban">
+        <div class="kanban-col">
+          <div class="kanban-col-header">
+            <div class="kanban-col-title">Planeado</div>
+            <span class="kanban-count">1</span>
+          </div>
+          <div class="kanban-card" onclick="showPage('projectdetail')">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:4px">
+              <div class="kanban-card-title">Escritório da Directora</div>
+              <span class="unit-b">BENGUELA</span>
+            </div>
+            <div class="kanban-card-meta">21 Mar → 29 Mar 2026 · Resp: —</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:0%;background:#94a3b8"></div></div>
+            <div class="kanban-card-footer">
+              <span style="font-size:11px;color:#94a3b8">0% · Orç. a definir</span>
+              <span class="pill pill-gray" style="font-size:10px">Planeamento</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="kanban-col">
+          <div class="kanban-col-header">
+            <div class="kanban-col-title">Em andamento</div>
+            <span class="kanban-count" style="background:#fef3c7;color:#92400e">2</span>
+          </div>
+          <div class="kanban-card" onclick="showPage('projectdetail')">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:4px">
+              <div class="kanban-card-title">NOVA CASA - LOBITO</div>
+              <span class="unit-l">LOBITO</span>
+            </div>
+            <div class="kanban-card-meta">6 Jan 2026 · Resp: Soma</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:70%"></div></div>
+            <div class="kanban-card-footer">
+              <span style="font-size:11px;color:#64748b;font-weight:600">70%</span>
+              <span style="font-size:11px;color:#94a3b8">17.628.000 / 25.000.000 Kz</span>
+            </div>
+          </div>
+          <div class="kanban-card" onclick="showPage('projectdetail')">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:4px">
+              <div class="kanban-card-title">Construção de 2 Novas Salas</div>
+              <span class="unit-c">CKC</span>
+            </div>
+            <div class="kanban-card-meta">Nov 2024 · Resp: Soma</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:30%;background:linear-gradient(to right,#f59e0b,#ea580c)"></div></div>
+            <div class="kanban-card-footer">
+              <span style="font-size:11px;color:#64748b;font-weight:600">30%</span>
+              <span style="font-size:11px;color:#94a3b8">Orç. 5.000.000 Kz</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="kanban-col">
+          <div class="kanban-col-header">
+            <div class="kanban-col-title">Concluído</div>
+            <span class="kanban-count" style="background:#dcfce7;color:#166534">0</span>
+          </div>
+          <div style="text-align:center;padding:24px 12px;color:#94a3b8;font-size:12px">
+            <i class="ti ti-check" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4"></i>
+            Nenhum projecto concluído
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== DETALHE PROJECTO (NOVA CASA LOBITO) ==================== -->
+    <div class="page" id="page-projectdetail">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-sm" onclick="showPage('projects')"><i class="ti ti-arrow-left"></i> Projectos</button>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="page-title">NOVA CASA - LOBITO</div>
+              <span class="unit-l">LOBITO</span>
+              <span class="pill pill-blue">Em andamento</span>
+            </div>
+            <div class="page-sub">Responsável: Soma · Início: 6 Jan 2026</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm"><i class="ti ti-download"></i> Exportar</button>
+          <button class="btn btn-sm btn-primary"><i class="ti ti-plus"></i> Adicionar despesa</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Orçamento estimado</div>
+          <div class="stat-value" style="font-size:20px">25.000.000 Kz</div>
+          <div class="stat-sub"><span class="sub-blue">Aprovado por Nancy/Chris</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total gasto</div>
+          <div class="stat-value" style="font-size:20px;color:#ef4444">17.628.000 Kz</div>
+          <div class="stat-sub"><span class="sub-red">70.5% do orçamento</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Saldo disponível</div>
+          <div class="stat-value" style="font-size:20px;color:#16a34a">7.372.000 Kz</div>
+          <div class="stat-sub"><span class="sub-green">29.5% restante</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Progresso</div>
+          <div class="stat-value" style="font-size:20px">70%</div>
+          <div class="progress-bar" style="margin-top:10px"><div class="progress-fill" style="width:70%"></div></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Despesas por categoria <i class="ti ti-chart-pie"></i></div>
+          <div class="chart-bar-wrap">
+            <div class="chart-bar-row"><div class="chart-bar-label">Compra do Gerador</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:91%"></div></div><div class="chart-bar-val">16.000.000 Kz</div></div>
+            <div class="chart-bar-row"><div class="chart-bar-label">Cabos + Inversor</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:5%;background:#f59e0b"></div></div><div class="chart-bar-val">900.000 Kz</div></div>
+            <div class="chart-bar-row"><div class="chart-bar-label">Transp. Gerador</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:3%;background:#10b981"></div></div><div class="chart-bar-val">600.000 Kz</div></div>
+            <div class="chart-bar-row"><div class="chart-bar-label">Alimentação/Comb.</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:0.5%;background:#ec4899"></div></div><div class="chart-bar-val">80.000 Kz</div></div>
+            <div class="chart-bar-row"><div class="chart-bar-label">Estaferos</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:0.2%;background:#8b5cf6"></div></div><div class="chart-bar-val">24.000 Kz</div></div>
+            <div class="chart-bar-row"><div class="chart-bar-label">Combustível viagem</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:0.2%;background:#94a3b8"></div></div><div class="chart-bar-val">24.000 Kz</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Informações do projecto <i class="ti ti-info-circle"></i></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;margin-bottom:14px">
+            <div style="padding:10px;background:#f8fafc;border-radius:8px"><div style="color:#94a3b8;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:3px">Unidade</div><div style="font-weight:700"><span class="unit-l">LOBITO</span></div></div>
+            <div style="padding:10px;background:#f8fafc;border-radius:8px"><div style="color:#94a3b8;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:3px">Responsável</div><div style="font-weight:700">Soma</div></div>
+            <div style="padding:10px;background:#f8fafc;border-radius:8px"><div style="color:#94a3b8;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:3px">Data início</div><div style="font-weight:700">6 Jan 2026</div></div>
+            <div style="padding:10px;background:#f8fafc;border-radius:8px"><div style="color:#94a3b8;font-size:10px;font-weight:700;text-transform:uppercase;margin-bottom:3px">Data fim prev.</div><div style="font-weight:700">23 Jan 2026</div></div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;padding:10px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;text-align:center">
+              <div style="font-size:11px;color:#16a34a;font-weight:700;margin-bottom:2px">APROVADO POR</div>
+              <div style="font-size:13px;font-weight:700;color:#0f172a">Nancy &amp; Chris</div>
+            </div>
+            <div style="flex:1;padding:10px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;text-align:center">
+              <div style="font-size:11px;color:#0369a1;font-weight:700;margin-bottom:2px">FACTURAS ENTREGUES A</div>
+              <div style="font-size:13px;font-weight:700;color:#0f172a">Teté / Domingos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="overflow-x:auto">
+        <div class="card-title" style="margin-bottom:16px">
+          Registo de despesas
+          <button class="btn btn-sm btn-primary"><i class="ti ti-plus"></i> Adicionar</button>
+        </div>
+        <table><thead><tr><th>Descrição</th><th>Categoria</th><th>Total (Kz)</th><th>Fornecedor</th><th>Comprado por</th><th>Data</th><th>Pagamento</th><th>Factura</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600">Compra de Gerador</td>
+            <td><span class="pill pill-gray" style="font-size:10px">Electricidade</span></td>
+            <td style="font-weight:700">16.000.000 Kz</td>
+            <td>Anônimo</td>
+            <td>Apolinário</td>
+            <td>12 Jan 2026</td>
+            <td><span class="pill pill-purple" style="font-size:10px">Transferência</span></td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">70m cabos trifásicos 25A + inversor 100A</td>
+            <td><span class="pill pill-gray" style="font-size:10px">Mat. construção</span></td>
+            <td style="font-weight:700">900.000 Kz</td>
+            <td>Mercado</td>
+            <td>Apolinário e Soma</td>
+            <td>12 Jan 2026</td>
+            <td><span class="pill pill-purple" style="font-size:10px">Transferência</span></td>
+            <td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Pendente</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Transporte do Gerador</td>
+            <td><span class="pill pill-gray" style="font-size:10px">Electricidade</span></td>
+            <td style="font-weight:700">600.000 Kz</td>
+            <td>Anônimo</td>
+            <td>Apolinário</td>
+            <td>12 Jan 2026</td>
+            <td><span class="pill pill-purple" style="font-size:10px">Transferência</span></td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Alimentação e combustível (Apolinário)</td>
+            <td><span class="pill pill-gray" style="font-size:10px">Electricidade</span></td>
+            <td style="font-weight:700">80.000 Kz</td>
+            <td>LUANDA-BENGUELA</td>
+            <td>Apolinário</td>
+            <td>12 Jan 2026</td>
+            <td><span class="pill pill-blue" style="font-size:10px">Dinheiro</span></td>
+            <td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Pendente</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">3 Estaferos — transporte do Gerador</td>
+            <td><span class="pill pill-gray" style="font-size:10px">Electricidade</span></td>
+            <td style="font-weight:700">24.000 Kz</td>
+            <td>Rua</td>
+            <td>Apolinário</td>
+            <td>15 Jan 2026</td>
+            <td><span class="pill pill-blue" style="font-size:10px">Dinheiro</span></td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Combustível 2 viagens Benguela–Lobito</td>
+            <td><span class="pill pill-gray" style="font-size:10px">Electricidade</span></td>
+            <td style="font-weight:700">24.000 Kz</td>
+            <td>Pumangol</td>
+            <td>Apolinário</td>
+            <td>12 Jan 2026</td>
+            <td><span class="pill pill-blue" style="font-size:10px">Dinheiro</span></td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+          </tr>
+        </tbody></table>
+        <div style="padding:14px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;font-size:13px">
+          <span style="color:#64748b">Total gastos:</span>
+          <strong style="color:#0f172a">17.628.000 Kz</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MATERIAIS ==================== -->
+    <div class="page" id="page-materials">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Materiais</div>
+          <div class="page-sub">Registo de compras e facturas · 12 registos</div>
+        </div>
+        <button class="btn btn-primary"><i class="ti ti-plus"></i> Adicionar material</button>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;padding:14px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="text" placeholder="Pesquisar materiais..." style="width:220px">
+          <select style="width:130px">
+            <option>Todas as unidades</option>
+            <option>BENGUELA</option>
+            <option>LOBITO</option>
+            <option>CKC</option>
+          </select>
+          <select style="width:160px">
+            <option>Todas as facturas</option>
+            <option>Factura entregue</option>
+            <option>Sem factura</option>
+          </select>
+          <select style="width:140px">
+            <option>Todos os compradores</option>
+            <option>Soma</option>
+            <option>Sr. Domingos</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" style="overflow-x:auto">
+        <table><thead><tr><th>Material</th><th>Unidade</th><th>Qty</th><th>Preço unit. (Kz)</th><th>Total (Kz)</th><th>Comprado por</th><th>Data compra</th><th>Factura</th><th>Recebida por</th><th>Ações</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600">Térmico sprint 12000 BTU</td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td>1</td><td>2.200 Kz</td>
+            <td style="font-weight:700">2.200 Kz</td>
+            <td>Soma</td>
+            <td>21 Mai 2026</td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+            <td>Teté</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Térmico sprint 9000 BTU</td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td>1</td><td>2.200 Kz</td>
+            <td style="font-weight:700">2.200 Kz</td>
+            <td>Soma</td>
+            <td>21 Mai 2026</td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+            <td>Teté</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Fita Anstrong</td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td>2</td><td>3.000 Kz</td>
+            <td style="font-weight:700">6.000 Kz</td>
+            <td>Soma</td>
+            <td>21 Mai 2026</td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+            <td>Teté</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Comando universal</td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td>3</td><td>3.700 Kz</td>
+            <td style="font-weight:700">11.100 Kz</td>
+            <td>Soma</td>
+            <td>21 Mai 2026</td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+            <td>Teté</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Vareta</td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td>3</td><td>2.000 Kz</td>
+            <td style="font-weight:700">6.000 Kz</td>
+            <td>Soma</td>
+            <td>21 Mai 2026</td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+            <td>Teté</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Compressor sprint 9000 BTU</td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td>1</td><td>10.700 Kz</td>
+            <td style="font-weight:700">10.700 Kz</td>
+            <td>Soma</td>
+            <td>21 Mai 2026</td>
+            <td><span class="inv-ok"><i class="ti ti-check" style="font-size:10px"></i> Sim</span></td>
+            <td>Teté</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Parafuso</td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td>1</td><td>2.000 Kz</td>
+            <td style="font-weight:700">2.000 Kz</td>
+            <td>Sr. Domingos</td>
+            <td>—</td>
+            <td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Não</span></td>
+            <td>—</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Dobradiças</td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td>1</td><td>3.500 Kz</td>
+            <td style="font-weight:700">3.500 Kz</td>
+            <td>Sr. Domingos</td>
+            <td>—</td>
+            <td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Não</span></td>
+            <td>—</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Rebite</td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td>1</td><td>3.500 Kz</td>
+            <td style="font-weight:700">3.500 Kz</td>
+            <td>Sr. Domingos</td>
+            <td>—</td>
+            <td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Não</span></td>
+            <td>—</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Disco de corte</td>
+            <td><span class="unit-l">LOBITO</span></td>
+            <td>1</td><td>500 Kz</td>
+            <td style="font-weight:700">500 Kz</td>
+            <td>Sr. Domingos</td>
+            <td>—</td>
+            <td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Não</span></td>
+            <td>—</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Eletrodos</td>
+            <td><span class="unit-l">LOBITO</span></td>
+            <td>1</td><td>4.500 Kz</td>
+            <td style="font-weight:700">4.500 Kz</td>
+            <td>Sr. Domingos</td>
+            <td>—</td>
+            <td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Não</span></td>
+            <td>—</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Cantoneira</td>
+            <td><span class="unit-l">LOBITO</span></td>
+            <td>1</td><td>8.000 Kz</td>
+            <td style="font-weight:700">8.000 Kz</td>
+            <td>Sr. Domingos</td>
+            <td>—</td>
+            <td><span class="inv-pend"><i class="ti ti-x" style="font-size:10px"></i> Não</span></td>
+            <td>—</td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+        </tbody></table>
+        <div style="padding:14px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;font-size:13px">
+          <span style="color:#64748b">Total materiais:</span>
+          <strong style="color:#0f172a">60.200 Kz</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== FERRAMENTAS ==================== -->
+    <div class="page" id="page-tools">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Ferramentas</div>
+          <div class="page-sub">Inventário de equipamentos · 6 registos</div>
+        </div>
+        <button class="btn btn-primary"><i class="ti ti-plus"></i> Adicionar ferramenta</button>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;padding:14px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="text" placeholder="Pesquisar ferramentas..." style="width:220px">
+          <select style="width:130px">
+            <option>Todas as unidades</option>
+            <option>BENGUELA</option>
+            <option>LOBITO</option>
+            <option>CKC</option>
+          </select>
+          <select style="width:140px">
+            <option>Todas as condições</option>
+            <option>Bom</option>
+            <option>Danificado</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card" style="overflow-x:auto">
+        <table><thead><tr><th>Ferramenta</th><th>Unidade</th><th>Condição</th><th>Local</th><th>Responsável</th><th>Valor (Kz)</th><th>Foto</th><th>Ações</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong style="font-weight:700">Agrafador</strong></td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td><span class="pill pill-green">Bom</span></td>
+            <td>Arrecadação #21</td>
+            <td>Miguel</td>
+            <td>—</td>
+            <td><img class="thumb" src="manutencao_fotos/agrafador.jpg" onclick="lb(this.src,'Agrafador')" title="Agrafador"></td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td><strong style="font-weight:700">Colher de pedreiro</strong></td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td><span class="pill pill-red">Danificado</span></td>
+            <td>—</td>
+            <td>Miguel</td>
+            <td>1.500 Kz</td>
+            <td><img class="thumb" src="manutencao_fotos/colher_pedreiro.jpg" onclick="lb(this.src,'Colher de pedreiro')" title="Colher de pedreiro"></td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td><strong style="font-weight:700">Marreta pega bimateria</strong></td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td><span class="pill pill-red">Danificado</span></td>
+            <td>—</td>
+            <td>Miguel</td>
+            <td>4.500 Kz</td>
+            <td><span style="font-size:11px;color:#94a3b8">—</span></td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td><strong style="font-weight:700">Parafusadora</strong></td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td><span class="pill pill-green">Bom</span></td>
+            <td>Arrecadação #21</td>
+            <td>Miguel</td>
+            <td>36.000 Kz</td>
+            <td><img class="thumb" src="manutencao_fotos/parafusadora.jpg" onclick="lb(this.src,'Parafusadora')" title="Parafusadora"></td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td><strong style="font-weight:700">Martelo de carpinteiro</strong></td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td><span class="pill pill-red">Danificado</span></td>
+            <td>Sala de Manutenção</td>
+            <td>Miguel</td>
+            <td>1.950 Kz</td>
+            <td><img class="thumb" src="manutencao_fotos/martelo.jpg" onclick="lb(this.src,'Martelo de carpinteiro')" title="Martelo de carpinteiro"></td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+          <tr>
+            <td><strong style="font-weight:700">Masseta cabo de madeira</strong></td>
+            <td><span class="unit-b">BENGUELA</span></td>
+            <td><span class="pill pill-green">Bom</span></td>
+            <td>Sala de Manutenção do Soma</td>
+            <td>Miguel</td>
+            <td>4.000 Kz</td>
+            <td><img class="thumb" src="manutencao_fotos/masseta.jpg" onclick="lb(this.src,'Masseta cabo de madeira')" title="Masseta"></td>
+            <td><span class="icon-btn"><i class="ti ti-edit"></i></span></td>
+          </tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- ==================== CHAT ==================== -->
+    <div class="page" id="page-chat">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Chat</div>
+          <div class="page-sub">Comunicação da equipa</div>
+        </div>
+      </div>
+      <div class="grid-2" style="height:calc(100vh - 140px);min-height:500px">
+        <div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column">
+          <div style="padding:14px 16px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Canais</div>
+          <div style="padding:8px">
+            <div style="padding:9px 12px;border-radius:8px;background:#eef2ff;font-size:13px;color:#3730a3;font-weight:600;cursor:pointer;margin-bottom:2px"># geral</div>
+            <div style="padding:9px 12px;border-radius:8px;font-size:13px;color:#64748b;cursor:pointer;margin-bottom:2px"># benguela</div>
+            <div style="padding:9px 12px;border-radius:8px;font-size:13px;color:#64748b;cursor:pointer;margin-bottom:2px"># lobito</div>
+            <div style="padding:9px 12px;border-radius:8px;font-size:13px;color:#64748b;cursor:pointer"># ckc</div>
+          </div>
+          <div style="padding:14px 16px;border-top:1px solid #f1f5f9;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#0f172a">Mensagens directas</div>
+          <div style="padding:8px;overflow-y:auto;flex:1">
+            <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;border-radius:8px;background:#f8fafc"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#dc2626">MI</div><div style="flex:1"><div style="font-size:13px;font-weight:600">Miguel</div><div style="font-size:10px;color:#94a3b8">Pintura nos quadros em andamento</div></div></div>
+            <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;border-radius:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#059669">SR</div><div style="flex:1"><div style="font-size:13px;font-weight:600">Sr. Domingos</div><div style="font-size:10px;color:#94a3b8">Espelhos trocados no LOBITO</div></div></div>
+            <div style="padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;border-radius:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#0d9488">SO</div><div style="flex:1"><div style="font-size:13px;font-weight:600">Soma</div><div style="font-size:10px;color:#94a3b8">Materiais AVAC comprados</div></div></div>
+          </div>
+        </div>
+        <div class="card" style="padding:0;display:flex;flex-direction:column">
+          <div style="padding:14px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px">
+            <div style="font-size:15px;font-weight:700;color:#0f172a"># geral</div>
+            <span class="pill pill-gray" style="font-size:10px">Equipa toda</span>
+          </div>
+          <div style="flex:1;padding:16px;overflow-y:auto">
+            <div class="chat-msg">
+              <div class="chat-avatar" style="background:#dc2626">MI</div>
+              <div>
+                <div class="chat-sender">Miguel · BENGUELA</div>
+                <div class="chat-bubble">A pintura nos quadros já está em andamento. Vou enviar fotos quando terminar.</div>
+                <div class="chat-time">28 Mai · 10:00</div>
+              </div>
+            </div>
+            <div class="chat-msg">
+              <div class="chat-avatar" style="background:#059669">SR</div>
+              <div>
+                <div class="chat-sender">Sr. Domingos · LOBITO</div>
+                <div class="chat-bubble">Troquei os espelhos dos WCs e coloquei porta-toalhas nos WCs dos professores. Também consertei a ventoinha grande de Benguela.</div>
+                <div class="chat-time">25 Mai · 14:30</div>
+              </div>
+            </div>
+            <div class="chat-msg mine">
+              <div class="chat-avatar">NA</div>
+              <div>
+                <div class="chat-sender" style="text-align:right">Nancy Admin</div>
+                <div class="chat-bubble">Excelente Domingos! Podem entregar as facturas à Teté quando tiverem.</div>
+                <div class="chat-time" style="text-align:right">25 Mai · 15:00</div>
+              </div>
+            </div>
+            <div class="chat-msg">
+              <div class="chat-avatar" style="background:#0d9488">SO</div>
+              <div>
+                <div class="chat-sender">Soma · BENGUELA</div>
+                <div class="chat-bubble">Comprei os térmicos, compressor, vareta, comandos e fita Anstrong. Facturas já entregues à Teté.</div>
+                <div class="chat-time">21 Mai · 11:00</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:12px 14px;border-top:1px solid #f1f5f9;display:flex;gap:8px">
+            <input type="text" placeholder="Escrever mensagem..." style="flex:1">
+            <button class="btn btn-sm"><i class="ti ti-microphone"></i></button>
+            <button class="btn btn-sm btn-primary"><i class="ti ti-send"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PREÇOS ==================== -->
+    <div class="page" id="page-prices">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Registo de Preços</div>
+          <div class="page-sub">Consulta e comparação de preços de materiais · 1 registo</div>
+        </div>
+        <button class="btn btn-primary"><i class="ti ti-plus"></i> Registar preço</button>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;padding:14px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="text" placeholder="Pesquisar material..." style="width:220px">
+          <select style="width:160px">
+            <option>Todas as lojas</option>
+            <option>CHINA TOWN</option>
+          </select>
+          <input type="date" style="width:150px" value="2026-06-12">
+        </div>
+      </div>
+
+      <div class="card" style="overflow-x:auto">
+        <table><thead><tr><th>Material</th><th>Preço (Kz)</th><th>Loja</th><th>Data</th><th>Notas</th><th>Foto</th><th>Ações</th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600">CIMENTO VERMELHO</td>
+            <td style="font-weight:700;color:#0f172a;font-size:15px">10.000 Kz</td>
+            <td>CHINA TOWN</td>
+            <td>01 Jun 2026</td>
+            <td><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">ESTAVA EM PROMOÇÃO</span></td>
+            <td><span class="icon-btn"><i class="ti ti-photo"></i></span></td>
+            <td style="white-space:nowrap"><span class="icon-btn"><i class="ti ti-edit"></i></span> <span class="icon-btn"><i class="ti ti-trash"></i></span></td>
+          </tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- ==================== RELATÓRIOS ==================== -->
+    <div class="page" id="page-reports">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Relatórios</div>
+          <div class="page-sub">Análise e exportação — Junho 2026</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <select style="width:130px">
+            <option>Todas as unidades</option>
+            <option>BENGUELA</option>
+            <option>LOBITO</option>
+            <option>CKC</option>
+          </select>
+          <select style="width:130px">
+            <option>Junho 2026</option>
+            <option>Maio 2026</option>
+            <option>Abril 2026</option>
+          </select>
+          <button class="btn btn-sm"><i class="ti ti-download"></i> Exportar PDF</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#10b981,#0d9488)"><i class="ti ti-check"></i></div>
+          <div class="stat-label">Tarefas resolvidas</div>
+          <div class="stat-value">5</div>
+          <div class="stat-sub"><span class="sub-green">de 8 total</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#f59e0b,#ea580c)"><i class="ti ti-currency-dollar"></i></div>
+          <div class="stat-label">Custo materiais</div>
+          <div class="stat-value" style="font-size:18px">60.200 Kz</div>
+          <div class="stat-sub"><span class="sub-blue">12 materiais</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#3b82f6,#6366f1)"><i class="ti ti-users"></i></div>
+          <div class="stat-label">Técnicos activos</div>
+          <div class="stat-value">4</div>
+          <div class="stat-sub"><span class="sub-blue">Miguel, Domingos, Paulo, Soma</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,#6366f1,#9333ea)"><i class="ti ti-folder-kanban"></i></div>
+          <div class="stat-label">Projectos activos</div>
+          <div class="stat-value">3</div>
+          <div class="stat-sub"><span class="sub-purple">2 em andamento</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Tarefas por unidade</div>
+          <div class="chart-bar-wrap">
+            <div class="chart-bar-row">
+              <div class="chart-bar-label">BENGUELA</div>
+              <div class="chart-bar-track"><div class="chart-bar-fill" style="width:62%"></div></div>
+              <div class="chart-bar-val">5 tarefas</div>
+            </div>
+            <div class="chart-bar-row">
+              <div class="chart-bar-label">LOBITO</div>
+              <div class="chart-bar-track"><div class="chart-bar-fill" style="width:37%;background:linear-gradient(to right,#10b981,#0d9488)"></div></div>
+              <div class="chart-bar-val">3 tarefas</div>
+            </div>
+            <div class="chart-bar-row">
+              <div class="chart-bar-label">CKC</div>
+              <div class="chart-bar-track"><div class="chart-bar-fill" style="width:0%;background:linear-gradient(to right,#f59e0b,#ea580c)"></div></div>
+              <div class="chart-bar-val">0 tarefas</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Gastos projectos (Kz)</div>
+          <div class="chart-bar-wrap">
+            <div class="chart-bar-row">
+              <div class="chart-bar-label">NOVA CASA LOB</div>
+              <div class="chart-bar-track"><div class="chart-bar-fill" style="width:100%"></div></div>
+              <div class="chart-bar-val">17.628.000</div>
+            </div>
+            <div class="chart-bar-row">
+              <div class="chart-bar-label">2 Salas CKC</div>
+              <div class="chart-bar-track"><div class="chart-bar-fill" style="width:28%;background:linear-gradient(to right,#f59e0b,#ea580c)"></div></div>
+              <div class="chart-bar-val">5.000.000 orç.</div>
+            </div>
+            <div class="chart-bar-row">
+              <div class="chart-bar-label">Escritório BNG</div>
+              <div class="chart-bar-track"><div class="chart-bar-fill" style="width:0%;background:#94a3b8"></div></div>
+              <div class="chart-bar-val">A definir</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Materiais por unidade</div>
+          <div class="chart-bar-wrap">
+            <div class="chart-bar-row"><div class="chart-bar-label">BENGUELA</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:75%"></div></div><div class="chart-bar-val">9 itens</div></div>
+            <div class="chart-bar-row"><div class="chart-bar-label">LOBITO</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:37%;background:linear-gradient(to right,#10b981,#0d9488)"></div></div><div class="chart-bar-val">3 itens</div></div>
+            <div class="chart-bar-row"><div class="chart-bar-label">CKC</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:0%;background:linear-gradient(to right,#f59e0b,#ea580c)"></div></div><div class="chart-bar-val">0 itens</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Ferramentas por condição</div>
+          <div class="chart-bar-wrap">
+            <div class="chart-bar-row"><div class="chart-bar-label">Bom</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:50%;background:linear-gradient(to right,#10b981,#0d9488)"></div></div><div class="chart-bar-val">3 ferramentas</div></div>
+            <div class="chart-bar-row"><div class="chart-bar-label">Danificado</div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:50%;background:linear-gradient(to right,#ef4444,#dc2626)"></div></div><div class="chart-bar-val">3 ferramentas</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== CONFIGURAÇÕES ==================== -->
+    <div class="page" id="page-settings">
+      <div class="topbar">
+        <div>
+          <div class="page-title">Configurações</div>
+          <div class="page-sub">Gestão de utilizadores e preferências da aplicação</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Equipa <span class="pill pill-blue">11 membros</span></div>
+          <table><thead><tr><th>Nome</th><th>Função</th><th>Unidade</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px">NA</div><div><div style="font-weight:600;font-size:13px">Nancy Admin</div><div style="font-size:11px;color:#94a3b8">Admin</div></div></div></td>
+              <td><span class="pill pill-purple">Admin</span></td>
+              <td>—</td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#dc2626">MI</div><div><div style="font-weight:600;font-size:13px">Miguel</div></div></div></td>
+              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
+              <td><span class="unit-b">BENGUELA</span></td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#0d9488">CO</div><div><div style="font-weight:600;font-size:13px">Condor</div></div></div></td>
+              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
+              <td>—</td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#6366f1">SO</div><div><div style="font-weight:600;font-size:13px">Soma</div></div></div></td>
+              <td><span class="pill pill-teal">Técnico / Comprador / Recep. factura</span></td>
+              <td>—</td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#059669">SR</div><div><div style="font-weight:600;font-size:13px">Sr. Domingos</div></div></div></td>
+              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
+              <td><span class="unit-l">LOBITO</span></td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#7c3aed">MC</div><div><div style="font-weight:600;font-size:13px">Michael</div></div></div></td>
+              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
+              <td><span class="unit-c">CKC</span></td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#f59e0b">DM</div><div><div style="font-weight:600;font-size:13px">Domildes</div></div></div></td>
+              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
+              <td>—</td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#ec4899">AL</div><div><div style="font-weight:600;font-size:13px">Aldair</div></div></div></td>
+              <td><span class="pill pill-teal">Técnico / Comprador / Recep. factura</span></td>
+              <td>—</td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#f43f5e">TT</div><div><div style="font-weight:600;font-size:13px">Teté</div></div></div></td>
+              <td><span class="pill pill-indigo">Recep. facturas</span></td>
+              <td>—</td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#a855f7">AN</div><div><div style="font-weight:600;font-size:13px">Angelina</div></div></div></td>
+              <td><span class="pill pill-indigo">Recep. facturas</span></td>
+              <td>—</td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#0369a1">JO</div><div><div style="font-weight:600;font-size:13px">Joelma</div></div></div></td>
+              <td><span class="pill pill-indigo">Recep. facturas</span></td>
+              <td>—</td>
+              <td><span class="pill pill-green">Activo</span></td>
+            </tr>
+          </tbody></table>
+          <div style="margin-top:14px"><button class="btn btn-primary btn-sm"><i class="ti ti-user-plus"></i> Adicionar membro</button></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-title">Preferências da aplicação</div>
+            <div class="form-group"><label>Nome da empresa</label><input type="text" value="Nancy's English School — Manutenção" style="width:100%"></div>
+            <div class="form-group"><label>Moeda</label><input type="text" value="Kwanza (Kz)" style="width:100%" readonly></div>
+            <div class="form-group"><label>Fuso horário</label><select style="width:100%"><option>Africa/Luanda (UTC+1)</option></select></div>
+            <div class="form-group"><label>Idioma</label><select style="width:100%"><option>Português (PT)</option><option>English (EN)</option></select></div>
+            <div style="margin-top:4px"><button class="btn btn-primary">Guardar alterações</button></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Unidades activas</div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe">
+                <div><span class="unit-b">BENGUELA</span><div style="font-size:11px;color:#1e40af;margin-top:4px">Escola principal · Benguela</div></div>
+                <span class="pill pill-green" style="font-size:10px">Activa</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#ecfdf5;border-radius:10px;border:1px solid #a7f3d0">
+                <div><span class="unit-l">LOBITO</span><div style="font-size:11px;color:#065f46;margin-top:4px">Escola Lobito · Benguela prov.</div></div>
+                <span class="pill pill-green" style="font-size:10px">Activa</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#fffbeb;border-radius:10px;border:1px solid #fde68a">
+                <div><span class="unit-c">CKC</span><div style="font-size:11px;color:#92400e;margin-top:4px">Centro de Conhecimento CKC</div></div>
+                <span class="pill pill-green" style="font-size:10px">Activa</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById('page-' + name);
+  if (pg) pg.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(item => {
+    if (item.dataset.page === name) item.classList.add('active');
+  });
+  window.scrollTo(0, 0);
+}
+var TASKS={
+  1:{title:'Concertar a mesa dos professores',unit:'b',status:'Pendente',sc:'pill-amber',req:'Chris',tech:[{i:'M',bg:'#dc2626',n:'Miguel'},{i:'P',bg:'#7c3aed',n:'Paulo'}],start:'10 jun 2026',end:'11 jun 2026',dur:'2 dias',photos:[{src:'manutencao_fotos/mesa_antes1.jpg',cap:'Mesa — antes 1'},{src:'manutencao_fotos/mesa_antes2.jpg',cap:'Mesa — antes 2'},{src:'manutencao_fotos/mesa_antes3.jpg',cap:'Mesa — antes 3'},{src:'manutencao_fotos/mesa_antes4.jpg',cap:'Mesa — antes 4'}]},
+  2:{title:'Pintura nas partes pretas a cor cinza no alpendre da Main House',unit:'b',status:'Resolvido',sc:'pill-green',req:'Soma',tech:[{i:'M',bg:'#dc2626',n:'Miguel'},{i:'P',bg:'#7c3aed',n:'Paulo'}],start:'03 jun 2026',end:'03 jun 2026',dur:'3 horas',photos:[{src:'manutencao_fotos/alpendre.jpg',cap:'Alpendre — cobertura'}]},
+  3:{title:'Pintura nos quadros',unit:'b',status:'Em andamento',sc:'pill-blue',req:'Soma',tech:[{i:'M',bg:'#dc2626',n:'Miguel'},{i:'P',bg:'#7c3aed',n:'Paulo'}],start:'28 mai 2026',end:'28 mai 2026',dur:'—',photos:[]},
+  4:{title:'Reparo porta da direção',unit:'l',status:'Resolvido',sc:'pill-green',req:'Direção',tech:[{i:'SD',bg:'#059669',n:'Sr. Domingos'}],start:'16 mai 2026',end:'16 mai 2026',dur:'1 dia',photos:[{src:'manutencao_fotos/porta_frame.jpg',cap:'Porta — moldura'},{src:'manutencao_fotos/porta_direcao.jpg',cap:'Porta direção'},{src:'manutencao_fotos/porta_sala.jpg',cap:'Porta Sala 1'}]},
+  5:{title:'Pintura (mesas e porta)',unit:'l',status:'Resolvido',sc:'pill-green',req:'—',tech:[{i:'SD',bg:'#059669',n:'Sr. Domingos'}],start:'24 mai 2026',end:'24 mai 2026',dur:'—',photos:[]},
+  6:{title:'TROCA DE ESPELHO',unit:'l',status:'Resolvido',sc:'pill-green',req:'Direção',tech:[{i:'SD',bg:'#059669',n:'Sr. Domingos'}],start:'25 mai 2026',end:'25 mai 2026',dur:'1 dia',photos:[{src:'manutencao_fotos/espelho_novo.jpg',cap:'Espelho novo'},{src:'manutencao_fotos/espelho_inst1.jpg',cap:'Instalação porta-toalhas'},{src:'manutencao_fotos/espelho_inst2.jpg',cap:'Dispensador instalado'},{src:'manutencao_fotos/espelho_wc.jpg',cap:'WC — lavatório'},{src:'manutencao_fotos/espelho_novo2.jpg',cap:'Espelho novo 2'}]},
+  7:{title:'Substituir o lidificador quebrado',unit:'b',status:'Pendente',sc:'pill-amber',req:'Pascoal',tech:[{i:'M',bg:'#dc2626',n:'Miguel'}],start:'28 mai 2026',end:'28 mai 2026',dur:'5 min',photos:[]},
+  8:{title:'Reparar a cadeira da recepção',unit:'b',status:'Resolvido',sc:'pill-green',req:'Teté',tech:[{i:'M',bg:'#dc2626',n:'Miguel'},{i:'P',bg:'#7c3aed',n:'Paulo'}],start:'25 mai 2026',end:'25 mai 2026',dur:'45 min',photos:[{src:'manutencao_fotos/cadeira_antes.jpg',cap:'Cadeira — antes'},{src:'manutencao_fotos/cadeira_depois.jpg',cap:'Cadeira — depois'}]}
+};
+function setTasksView(v){
+  ['grid','kanban','sheet'].forEach(function(k){
+    var el=document.getElementById('tv-'+k);
+    if(el) el.style.display=(k===v?(k==='kanban'?'grid':''):'none');
+    var btn=document.getElementById('tvbtn-'+k);
+    if(btn) btn.className='tvbtn'+(k===v?' tvbtn-act':'');
+  });
+}
+function openTask(id){
+  var t=TASKS[id]; if(!t) return;
+  document.getElementById('tasks-views-wrap').style.display='none';
+  document.getElementById('tasks-filters-wrap').style.display='none';
+  var ub=document.getElementById('td-unit-badge');
+  ub.className='unit-'+t.unit; ub.textContent=t.unit==='b'?'BENGUELA':t.unit==='l'?'LOBITO':'CKC';
+  document.getElementById('td-prio-tag').innerHTML='<i class="ti ti-arrow-right" style="font-size:10px"></i> Média';
+  document.getElementById('td-title').textContent=t.title;
+  var sp=document.getElementById('td-status-pill'); sp.className='pill '+t.sc; sp.textContent=t.status;
+  document.getElementById('td-start').textContent=t.start;
+  document.getElementById('td-end').textContent=t.end;
+  document.getElementById('td-dur').textContent=t.dur;
+  document.getElementById('td-req').textContent=t.req;
+  var team=document.getElementById('td-team'); team.innerHTML='';
+  t.tech.forEach(function(m){team.innerHTML+='<div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:#f8fafc;border-radius:8px"><div class="avatar" style="width:30px;height:30px;font-size:10px;background:'+m.bg+'">'+m.i+'</div><span style="font-size:13px;font-weight:600">'+m.n+'</span></div>';});
+  var pc=document.getElementById('td-photos-card'), pd=document.getElementById('td-photos');
+  if(t.photos.length>0){pd.innerHTML='';t.photos.forEach(function(p){pd.innerHTML+='<img class="thumb" src="'+p.src+'" onclick="lb(this.src,\''+p.cap+'\')" title="'+p.cap+'" style="width:80px;height:80px">';});pc.style.display='';}else{pc.style.display='none';}
+  document.getElementById('tasks-detail-wrap').style.display='';
+  window.scrollTo(0,0);
+}
+function closeTask(){
+  document.getElementById('tasks-detail-wrap').style.display='none';
+  document.getElementById('tasks-views-wrap').style.display='';
+  document.getElementById('tasks-filters-wrap').style.display='';
+}
+function lb(src,caption){
+  document.getElementById('lb-img').src=src;
+  document.getElementById('lb-cap').textContent=caption||'';
+  document.getElementById('lb').classList.add('open');
+}
+function lbClose(){document.getElementById('lb').classList.remove('open')}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')lbClose()});
+</script>
+<div class="lb-overlay" id="lb" onclick="lbClose()">
+  <span class="lb-close" onclick="lbClose()">&times;</span>
+  <img class="lb-img" id="lb-img" src="" onclick="event.stopPropagation()">
+  <div class="lb-caption" id="lb-cap"></div>
+</div>
+</body>
+</html>
