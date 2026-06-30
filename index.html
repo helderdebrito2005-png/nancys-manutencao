@@ -8,7 +8,8 @@
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, getDoc, setDoc, addDoc, updateDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDY7tiIMygGfcTPK3WmuF2Uq00dmtFs2BU",
@@ -21,6 +22,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+
+// Instância secundária — cria utilizadores sem fazer logout do admin
+const appSecondary = initializeApp(firebaseConfig, 'secondary');
+const authSecondary = getAuth(appSecondary);
 
 /* ── helpers ── */
 function statusClass(s){
@@ -211,6 +217,282 @@ async function seedIfEmpty(){
   }
 }
 seedIfEmpty();
+
+/* ── AUTH & ROLES ── */
+let currentUser = null;
+window.__currentUser = null;
+
+const ROLE_PAGES = {
+  admin:           ['dashboard','tasks','projects','materials','tools','prices','chat','reports','settings'],
+  tecnico:         ['dashboard','tasks','materials','tools','prices','chat'],
+  recetor_faturas: ['dashboard','materials','chat'],
+};
+const ROLE_LABELS = {
+  admin:           'Administradora',
+  tecnico:         'Técnico / Comprador',
+  recetor_faturas: 'Recep. Facturas',
+};
+
+function applyRoleRestrictions(role){
+  const allowed = ROLE_PAGES[role] || ROLE_PAGES['recetor_faturas'];
+  document.querySelectorAll('.nav-item[data-page]').forEach(item=>{
+    item.style.display = allowed.includes(item.dataset.page) ? '' : 'none';
+  });
+  if(role !== 'admin'){
+    document.querySelectorAll('.admin-only').forEach(el=>{ el.style.display='none'; });
+  }
+  // If current active page is not allowed, redirect to dashboard
+  const activePage = document.querySelector('.page.active');
+  if(activePage){
+    const pageId = activePage.id.replace('page-','');
+    if(!allowed.includes(pageId)) window.showPage('dashboard');
+  }
+}
+
+window.doLogin = async function(){
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Preenche o email e a senha.'; return; }
+  btn.disabled = true; btn.textContent = 'A entrar…';
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch(e){
+    const msgs = {
+      'auth/invalid-credential':       'Email ou senha incorrectos.',
+      'auth/user-not-found':           'Utilizador não encontrado.',
+      'auth/wrong-password':           'Senha incorrecta.',
+      'auth/too-many-requests':        'Demasiadas tentativas. Tenta mais tarde.',
+      'auth/invalid-email':            'Email inválido.',
+    };
+    errEl.textContent = msgs[e.code] || ('Erro: ' + e.message);
+    btn.disabled = false; btn.innerHTML = '<i class="ti ti-login"></i> Entrar';
+  }
+};
+
+window.doLogout = async function(){
+  if(!confirm('Terminar sessão?')) return;
+  await signOut(auth);
+};
+
+/* ── Registo próprio ── */
+window.doRegister = async function(){
+  const name     = document.getElementById('reg-name').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const errEl    = document.getElementById('reg-error');
+  const btn      = document.getElementById('reg-btn');
+  errEl.textContent='';
+  if(!name||!email||!password){ errEl.textContent='Preenche todos os campos.'; return; }
+  if(password.length < 6){ errEl.textContent='A senha deve ter pelo menos 6 caracteres.'; return; }
+  btn.disabled=true; btn.textContent='A criar conta…';
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    await setDoc(doc(db,'users', cred.user.uid), {
+      uid: cred.user.uid, name, email, role: null,
+      initials, color:'#94a3b8', unit:'', status:'pending',
+      createdAt: serverTimestamp()
+    });
+    // onAuthStateChanged vai detectar status:pending e mostrar ecrã de espera
+  } catch(e){
+    const msgs = {
+      'auth/email-already-in-use': 'Este email já está registado.',
+      'auth/invalid-email':        'Email inválido.',
+      'auth/weak-password':        'Senha muito fraca.',
+    };
+    errEl.textContent = msgs[e.code] || ('Erro: ' + e.message);
+    btn.disabled=false; btn.innerHTML='<i class="ti ti-user-plus"></i> Criar conta';
+  }
+};
+
+/* ── Aprovar utilizador pendente ── */
+window.openApproveModal = function(uid, name){
+  document.getElementById('approve-uid').value  = uid;
+  document.getElementById('approve-name').textContent = name;
+  document.getElementById('approve-modal').style.display='flex';
+};
+window.closeApproveModal = function(){
+  document.getElementById('approve-modal').style.display='none';
+};
+window.doApproveUser = async function(){
+  const uid  = document.getElementById('approve-uid').value;
+  const role = document.getElementById('approve-role').value;
+  const unit = document.getElementById('approve-unit').value;
+  const btn  = document.getElementById('approve-btn');
+  btn.disabled=true; btn.textContent='A aprovar…';
+  try{
+    await updateDoc(doc(db,'users',uid),{ status:'active', role, unit });
+    closeApproveModal();
+    refreshTeamTable();
+  }catch(e){ alert('Erro: '+e.message); }
+  btn.disabled=false; btn.innerHTML='<i class="ti ti-check"></i> Aprovar e activar';
+};
+window.doRejectUser = async function(uid, name){
+  if(!confirm(`Rejeitar e remover o utilizador "${name}"?\nEsta acção não pode ser desfeita.`)) return;
+  try{
+    await deleteDoc(doc(db,'users',uid));
+    refreshTeamTable();
+  }catch(e){ alert('Erro: '+e.message); }
+};
+
+/* ── Criar novo utilizador (admin only) ── */
+window.openCreateUserModal = function(){
+  document.getElementById('create-user-modal').style.display='flex';
+};
+window.closeCreateUserModal = function(){
+  document.getElementById('create-user-modal').style.display='none';
+  ['cu-name','cu-email','cu-password','cu-unit'].forEach(id=>{ document.getElementById(id).value=''; });
+  document.getElementById('cu-error').textContent='';
+  document.getElementById('cu-success').textContent='';
+};
+window.doCreateUser = async function(){
+  const name     = document.getElementById('cu-name').value.trim();
+  const email    = document.getElementById('cu-email').value.trim();
+  const password = document.getElementById('cu-password').value;
+  const role     = document.getElementById('cu-role').value;
+  const unit     = document.getElementById('cu-unit').value.trim();
+  const errEl    = document.getElementById('cu-error');
+  const sucEl    = document.getElementById('cu-success');
+  const btn      = document.getElementById('cu-btn');
+  errEl.textContent=''; sucEl.textContent='';
+  if(!name||!email||!password){ errEl.textContent='Preenche nome, email e senha.'; return; }
+  if(password.length < 6){ errEl.textContent='A senha deve ter pelo menos 6 caracteres.'; return; }
+  btn.disabled=true; btn.textContent='A criar…';
+  try {
+    // Cria conta sem afectar a sessão do admin
+    const cred = await createUserWithEmailAndPassword(authSecondary, email, password);
+    const uid  = cred.user.uid;
+    // Cria perfil no Firestore
+    const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const COLORS = ['#dc2626','#7c3aed','#059669','#0d9488','#f59e0b','#ec4899','#f43f5e','#a855f7','#0369a1','#6366f1'];
+    const color = COLORS[Math.floor(Math.random()*COLORS.length)];
+    await setDoc(doc(db,'users', uid), { uid, name, email, role, unit, initials, color });
+    // Faz logout na instância secundária
+    await signOut(authSecondary);
+    sucEl.textContent = `✓ Utilizador "${name}" criado com sucesso!`;
+    btn.disabled=false; btn.innerHTML='<i class="ti ti-user-plus"></i> Criar utilizador';
+    // Refresca a tabela da equipa
+    refreshTeamTable();
+  } catch(e){
+    const msgs = {
+      'auth/email-already-in-use': 'Este email já está registado.',
+      'auth/invalid-email':        'Email inválido.',
+      'auth/weak-password':        'Senha muito fraca (mínimo 6 caracteres).',
+    };
+    errEl.textContent = msgs[e.code] || ('Erro: ' + e.message);
+    btn.disabled=false; btn.innerHTML='<i class="ti ti-user-plus"></i> Criar utilizador';
+  }
+};
+
+/* ── Tabela de equipa dinâmica ── */
+async function refreshTeamTable(){
+  const snap = await getDocs(collection(db,'users'));
+  const tbody        = document.getElementById('team-tbody');
+  const pendingWrap  = document.getElementById('pending-users-wrap');
+  const pendingTbody = document.getElementById('pending-tbody');
+  const pendingCount = document.getElementById('pending-count');
+  if(!tbody) return;
+
+  const ROLE_LABELS_LOCAL = { admin:'Admin', tecnico:'Técnico / Comprador', recetor_faturas:'Recep. Facturas' };
+  const ROLE_PILLS        = { admin:'pill-purple', tecnico:'pill-blue', recetor_faturas:'pill-indigo' };
+
+  let activeRows='', pendingRows='', nPending=0;
+  snap.forEach(d=>{
+    const u = d.data();
+    const initials  = u.initials || (u.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const color     = u.color || '#94a3b8';
+    const unitBadge = u.unit ? `<span class="unit-${u.unit==='BENGUELA'?'b':u.unit==='LOBITO'?'l':'c'}">${u.unit}</span>` : '—';
+
+    if(u.status === 'pending'){
+      nPending++;
+      pendingRows += `<tr>
+        <td><div style="display:flex;align-items:center;gap:8px">
+          <div class="avatar" style="width:28px;height:28px;font-size:10px;background:${color}">${initials}</div>
+          <div><div style="font-weight:600;font-size:13px">${u.name}</div><div style="font-size:11px;color:#94a3b8">${u.email||''}</div></div>
+        </div></td>
+        <td style="font-size:12px;color:#94a3b8">Aguarda aprovação</td>
+        <td>
+          <button class="btn btn-sm btn-primary" style="padding:4px 10px" onclick="openApproveModal('${d.id}','${u.name}')"><i class="ti ti-check"></i> Aprovar</button>
+          <button class="btn btn-sm" style="padding:4px 10px;color:#ef4444;border-color:#fecaca;margin-left:4px" onclick="doRejectUser('${d.id}','${u.name}')"><i class="ti ti-x"></i> Rejeitar</button>
+        </td>
+      </tr>`;
+    } else {
+      const roleLabel = ROLE_LABELS_LOCAL[u.role] || (u.role||'—');
+      const rolePill  = ROLE_PILLS[u.role] || 'pill-gray';
+      activeRows += `<tr>
+        <td><div style="display:flex;align-items:center;gap:8px">
+          <div class="avatar" style="width:28px;height:28px;font-size:10px;background:${color}">${initials}</div>
+          <div><div style="font-weight:600;font-size:13px">${u.name}</div><div style="font-size:11px;color:#94a3b8">${u.email||''}</div></div>
+        </div></td>
+        <td><span class="pill ${rolePill}">${roleLabel}</span></td>
+        <td>${unitBadge}</td>
+        <td><span class="pill pill-green">Activo</span></td>
+      </tr>`;
+    }
+  });
+
+  tbody.innerHTML = activeRows || '<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:20px">Nenhum utilizador activo</td></tr>';
+
+  if(pendingWrap){
+    pendingWrap.style.display = nPending > 0 ? '' : 'none';
+    if(pendingCount) pendingCount.textContent = nPending;
+    if(pendingTbody) pendingTbody.innerHTML = pendingRows;
+  }
+}
+
+onAuthStateChanged(auth, async (firebaseUser)=>{
+  const loginPage   = document.getElementById('login-page');
+  const appRoot     = document.getElementById('app-root');
+  const waitingPage = document.getElementById('waiting-page');
+  if(firebaseUser){
+    let profile = { name: firebaseUser.email, role: null, status:'pending', initials:'?' };
+    try{
+      const snap = await getDoc(doc(db,'users',firebaseUser.uid));
+      if(snap.exists()) profile = snap.data();
+    }catch(_){}
+    currentUser = { uid: firebaseUser.uid, ...profile };
+    window.__currentUser = currentUser;
+
+    if(profile.status === 'pending'){
+      // Utilizador aguarda aprovação do admin
+      loginPage.style.display   = 'none';
+      appRoot.style.display     = 'none';
+      waitingPage.style.display = 'flex';
+      document.getElementById('waiting-name').textContent = profile.name || '';
+    } else {
+      // Utilizador aprovado — mostrar app
+      waitingPage.style.display = 'none';
+      loginPage.style.display   = 'none';
+      document.getElementById('sidebar-user-initials').textContent =
+        profile.initials || profile.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+      document.getElementById('sidebar-user-name').textContent = profile.name;
+      document.getElementById('sidebar-user-role').textContent = ROLE_LABELS[profile.role] || profile.role;
+      if(profile.color) document.getElementById('sidebar-user-avatar').style.background = profile.color;
+      applyRoleRestrictions(profile.role);
+      if(profile.role === 'admin') refreshTeamTable();
+      appRoot.style.display = 'flex';
+    }
+  } else {
+    currentUser = null;
+    window.__currentUser = null;
+    waitingPage.style.display = 'none';
+    appRoot.style.display     = 'none';
+    loginPage.style.display   = 'flex';
+  }
+});
+
+/* ── Seed users collection if empty (first run, admin only) ── */
+async function seedUsersIfEmpty(){
+  const snap = await getDocs(collection(db,'users'));
+  if(!snap.empty) return;
+  // Structure: doc id = Firebase Auth UID (must match)
+  // This is a reference template — real UIDs come from Firebase Console
+  console.log('Users collection is empty. Create users in Firebase Auth and add their UIDs to Firestore users/{uid} with: name, role, initials, color, unit');
+}
+seedUsersIfEmpty();
 </script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -430,7 +712,7 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app-root" style="display:none">
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-icon"><i class="ti ti-tool"></i></div>
@@ -455,12 +737,12 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
       <a class="nav-item" data-page="settings" onclick="showPage('settings')"><i class="ti ti-settings"></i> Configurações</a>
     </nav>
     <div class="sidebar-user">
-      <div class="avatar">NA</div>
+      <div class="avatar" id="sidebar-user-avatar" style="background:linear-gradient(135deg,#6366f1,#9333ea)"><span id="sidebar-user-initials">?</span></div>
       <div style="flex:1;min-width:0">
-        <div class="user-name">Nancy Admin</div>
-        <div class="user-role">Administradora</div>
+        <div class="user-name" id="sidebar-user-name">—</div>
+        <div class="user-role" id="sidebar-user-role">—</div>
       </div>
-      <div class="icon-btn" title="Terminar sessão"><i class="ti ti-logout"></i></div>
+      <div class="icon-btn" title="Terminar sessão" onclick="doLogout()"><i class="ti ti-logout"></i></div>
     </div>
   </aside>
 
@@ -746,7 +1028,7 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
           </div>
           <div style="display:flex;gap:8px">
             <button class="btn btn-sm"><i class="ti ti-edit"></i> Editar</button>
-            <button class="btn btn-sm" onclick="deleteTask()" style="border-color:#fecaca;color:#ef4444"><i class="ti ti-trash"></i></button>
+            <button class="btn btn-sm admin-only" onclick="deleteTask()" style="border-color:#fecaca;color:#ef4444"><i class="ti ti-trash"></i></button>
           </div>
         </div>
         <div class="grid-2" style="align-items:start">
@@ -1524,77 +1806,21 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
       </div>
       <div class="grid-2">
         <div class="card">
-          <div class="card-title">Equipa <span class="pill pill-blue">11 membros</span></div>
+          <div class="card-title">Equipa <i class="ti ti-users"></i></div>
           <table><thead><tr><th>Nome</th><th>Função</th><th>Unidade</th><th>Estado</th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px">NA</div><div><div style="font-weight:600;font-size:13px">Nancy Admin</div><div style="font-size:11px;color:#94a3b8">Admin</div></div></div></td>
-              <td><span class="pill pill-purple">Admin</span></td>
-              <td>—</td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#dc2626">MI</div><div><div style="font-weight:600;font-size:13px">Miguel</div></div></div></td>
-              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
-              <td><span class="unit-b">BENGUELA</span></td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#0d9488">CO</div><div><div style="font-weight:600;font-size:13px">Condor</div></div></div></td>
-              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
-              <td>—</td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#6366f1">SO</div><div><div style="font-weight:600;font-size:13px">Soma</div></div></div></td>
-              <td><span class="pill pill-teal">Técnico / Comprador / Recep. factura</span></td>
-              <td>—</td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#059669">SR</div><div><div style="font-weight:600;font-size:13px">Sr. Domingos</div></div></div></td>
-              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
-              <td><span class="unit-l">LOBITO</span></td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#7c3aed">MC</div><div><div style="font-weight:600;font-size:13px">Michael</div></div></div></td>
-              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
-              <td><span class="unit-c">CKC</span></td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#f59e0b">DM</div><div><div style="font-weight:600;font-size:13px">Domildes</div></div></div></td>
-              <td><span class="pill pill-blue">Técnico / Comprador</span></td>
-              <td>—</td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#ec4899">AL</div><div><div style="font-weight:600;font-size:13px">Aldair</div></div></div></td>
-              <td><span class="pill pill-teal">Técnico / Comprador / Recep. factura</span></td>
-              <td>—</td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#f43f5e">TT</div><div><div style="font-weight:600;font-size:13px">Teté</div></div></div></td>
-              <td><span class="pill pill-indigo">Recep. facturas</span></td>
-              <td>—</td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#a855f7">AN</div><div><div style="font-weight:600;font-size:13px">Angelina</div></div></div></td>
-              <td><span class="pill pill-indigo">Recep. facturas</span></td>
-              <td>—</td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:10px;background:#0369a1">JO</div><div><div style="font-weight:600;font-size:13px">Joelma</div></div></div></td>
-              <td><span class="pill pill-indigo">Recep. facturas</span></td>
-              <td>—</td>
-              <td><span class="pill pill-green">Activo</span></td>
-            </tr>
+          <tbody id="team-tbody">
+            <tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:20px">A carregar…</td></tr>
           </tbody></table>
-          <div style="margin-top:14px"><button class="btn btn-primary btn-sm"><i class="ti ti-user-plus"></i> Adicionar membro</button></div>
+          <div style="margin-top:14px"><button class="btn btn-primary btn-sm admin-only" onclick="openCreateUserModal()"><i class="ti ti-user-plus"></i> Adicionar membro</button></div>
+        </div>
+
+        <!-- Utilizadores pendentes (admin only) -->
+        <div id="pending-users-wrap" class="card admin-only" style="display:none;margin-top:16px;border:2px solid #fef3c7">
+          <div class="card-title" style="color:#92400e">
+            <span><i class="ti ti-clock" style="color:#f59e0b"></i> Aguardam aprovação <span id="pending-count" class="pill pill-amber" style="font-size:11px;margin-left:6px">0</span></span>
+          </div>
+          <table><thead><tr><th>Utilizador</th><th>Estado</th><th>Acções</th></tr></thead>
+          <tbody id="pending-tbody"></tbody></table>
         </div>
         <div style="display:flex;flex-direction:column;gap:16px">
           <div class="card">
@@ -1630,7 +1856,18 @@ label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:6
 </div>
 
 <script>
+var ROLE_PAGES_JS = {
+  admin:           ['dashboard','tasks','projects','materials','tools','prices','chat','reports','settings'],
+  tecnico:         ['dashboard','tasks','materials','tools','prices','chat'],
+  recetor_faturas: ['dashboard','materials','chat'],
+};
 function showPage(name) {
+  // Guard: check role permission
+  var user = window.__currentUser;
+  if (user && user.role) {
+    var allowed = ROLE_PAGES_JS[user.role] || ROLE_PAGES_JS['recetor_faturas'];
+    if (!allowed.includes(name)) { name = 'dashboard'; }
+  }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const pg = document.getElementById('page-' + name);
@@ -1690,6 +1927,18 @@ function lb(src,caption){
 }
 function lbClose(){document.getElementById('lb').classList.remove('open')}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')lbClose()});
+
+function switchAuthTab(tab){
+  var isLogin = tab === 'login';
+  document.getElementById('panel-login').style.display    = isLogin ? '' : 'none';
+  document.getElementById('panel-register').style.display = isLogin ? 'none' : '';
+  var activeStyle   = 'background:linear-gradient(to right,#6366f1,#8b5cf6);color:#fff';
+  var inactiveStyle = 'background:transparent;color:#64748b';
+  document.getElementById('tab-login-btn').style.cssText = isLogin ? activeStyle : inactiveStyle;
+  document.getElementById('tab-reg-btn').style.cssText   = isLogin ? inactiveStyle : activeStyle;
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('reg-error').textContent   = '';
+}
 </script>
 <!-- NOVA TAREFA MODAL -->
 <div id="new-task-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
@@ -1711,6 +1960,167 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')lbClose()});
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
       <button class="btn" onclick="document.getElementById('new-task-modal').style.display='none'">Cancelar</button>
       <button class="btn btn-primary" onclick="addNewTask()"><i class="ti ti-check"></i> Criar tarefa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL CRIAR UTILIZADOR ==================== -->
+<div id="create-user-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center" onclick="if(event.target===this)closeCreateUserModal()">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:460px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.2)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:17px;font-weight:700;color:#0f172a"><i class="ti ti-user-plus" style="color:#6366f1"></i> Adicionar Membro</div>
+      <span style="cursor:pointer;color:#94a3b8;font-size:20px" onclick="closeCreateUserModal()">&times;</span>
+    </div>
+    <div class="form-group"><label>Nome completo *</label><input id="cu-name" type="text" placeholder="Ex: Miguel Santos" style="width:100%"></div>
+    <div class="form-group"><label>Email *</label><input id="cu-email" type="email" placeholder="Ex: miguel@nancys.ao" style="width:100%"></div>
+    <div class="form-group"><label>Senha temporária * <span style="font-weight:400;color:#94a3b8">(mín. 6 caracteres)</span></label><input id="cu-password" type="password" placeholder="••••••••" style="width:100%"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label>Cargo *</label>
+        <select id="cu-role" style="width:100%">
+          <option value="tecnico">Técnico / Comprador</option>
+          <option value="recetor_faturas">Recep. Facturas</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Unidade</label>
+        <select id="cu-unit" style="width:100%">
+          <option value="">— Todas —</option>
+          <option value="BENGUELA">BENGUELA</option>
+          <option value="LOBITO">LOBITO</option>
+          <option value="CKC">CKC</option>
+        </select>
+      </div>
+    </div>
+    <div id="cu-error" style="color:#ef4444;font-size:12px;font-weight:600;min-height:16px;margin-bottom:4px"></div>
+    <div id="cu-success" style="color:#16a34a;font-size:12px;font-weight:600;min-height:16px;margin-bottom:4px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+      <button class="btn" onclick="closeCreateUserModal()">Cancelar</button>
+      <button id="cu-btn" class="btn btn-primary" onclick="doCreateUser()"><i class="ti ti-user-plus"></i> Criar utilizador</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LOGIN / REGISTO ==================== -->
+<div id="login-page" style="display:flex;position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#f0f4ff 0%,#faf5ff 50%,#f8fafc 100%);align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;padding:40px 36px;width:420px;max-width:95vw;box-shadow:0 24px 60px rgba(99,102,241,.15),0 4px 16px rgba(0,0,0,.08)">
+
+    <!-- Logo -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+      <div class="logo-icon"><i class="ti ti-tool"></i></div>
+      <div>
+        <div class="logo-text">Nancy's Manutenção</div>
+        <div class="logo-sub">Sistema de gestão · Angola</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="display:flex;background:#f1f5f9;border-radius:10px;padding:4px;margin-bottom:24px;gap:4px">
+      <button id="tab-login-btn" onclick="switchAuthTab('login')"
+        style="flex:1;padding:8px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:linear-gradient(to right,#6366f1,#8b5cf6);color:#fff;font-family:inherit">
+        Entrar
+      </button>
+      <button id="tab-reg-btn" onclick="switchAuthTab('register')"
+        style="flex:1;padding:8px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#64748b;font-family:inherit">
+        Criar conta
+      </button>
+    </div>
+
+    <!-- PAINEL LOGIN -->
+    <div id="panel-login">
+      <div style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:4px">Bem-vindo de volta</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:20px">Inicia sessão para aceder ao sistema</div>
+      <div class="form-group">
+        <label>Email</label>
+        <input id="login-email" type="email" placeholder="Ex: miguel@nancys.ao" style="width:100%" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input id="login-password" type="password" placeholder="••••••••" style="width:100%" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div id="login-error" style="color:#ef4444;font-size:12px;font-weight:600;min-height:18px;margin-bottom:10px"></div>
+      <button id="login-btn" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="doLogin()">
+        <i class="ti ti-login"></i> Entrar
+      </button>
+    </div>
+
+    <!-- PAINEL REGISTO -->
+    <div id="panel-register" style="display:none">
+      <div style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:4px">Criar conta</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:20px">Após o registo, o administrador irá aprovar o teu acesso</div>
+      <div class="form-group">
+        <label>Nome completo *</label>
+        <input id="reg-name" type="text" placeholder="Ex: Miguel Santos" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label>Email *</label>
+        <input id="reg-email" type="email" placeholder="Ex: miguel@nancys.ao" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label>Senha * <span style="font-weight:400;color:#94a3b8">(mín. 6 caracteres)</span></label>
+        <input id="reg-password" type="password" placeholder="••••••••" style="width:100%" onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <div id="reg-error" style="color:#ef4444;font-size:12px;font-weight:600;min-height:18px;margin-bottom:10px"></div>
+      <button id="reg-btn" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="doRegister()">
+        <i class="ti ti-user-plus"></i> Criar conta
+      </button>
+    </div>
+
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid #f1f5f9;font-size:11px;color:#94a3b8;text-align:center">
+      Problemas de acesso? Contacta o administrador.
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ECRÃ AGUARDA APROVAÇÃO ==================== -->
+<div id="waiting-page" style="display:none;position:fixed;inset:0;z-index:99998;background:linear-gradient(135deg,#f0f4ff,#faf5ff);align-items:center;justify-content:center">
+  <div style="text-align:center;max-width:400px;padding:40px">
+    <div style="width:72px;height:72px;background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 24px rgba(245,158,11,.25)">
+      <i class="ti ti-clock" style="font-size:34px;color:#f59e0b"></i>
+    </div>
+    <div style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:8px">Conta criada com sucesso!</div>
+    <div style="font-size:14px;color:#64748b;line-height:1.6;margin-bottom:6px">
+      Olá, <strong id="waiting-name"></strong>! O teu pedido foi enviado.<br>
+      Aguarda que o administrador aprove o teu acesso e atribua o teu cargo.
+    </div>
+    <div style="margin:20px 0;padding:14px;background:#fef3c7;border-radius:12px;border:1px solid #fde68a;font-size:13px;color:#92400e">
+      <i class="ti ti-info-circle"></i> Receberás acesso assim que o administrador aprovar a tua conta.
+    </div>
+    <button class="btn" style="margin:0 auto" onclick="doLogout()"><i class="ti ti-logout"></i> Sair</button>
+  </div>
+</div>
+
+<!-- ==================== MODAL APROVAR UTILIZADOR ==================== -->
+<div id="approve-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;align-items:center;justify-content:center" onclick="if(event.target===this)closeApproveModal()">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:400px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,.2)">
+    <div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:4px"><i class="ti ti-user-check" style="color:#16a34a"></i> Aprovar utilizador</div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:20px">A aprovar: <strong id="approve-name"></strong></div>
+    <input type="hidden" id="approve-uid">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div class="form-group" style="margin:0">
+        <label>Cargo *</label>
+        <select id="approve-role" style="width:100%">
+          <option value="tecnico">Técnico / Comprador</option>
+          <option value="recetor_faturas">Recep. Facturas</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Unidade</label>
+        <select id="approve-unit" style="width:100%">
+          <option value="">— Todas —</option>
+          <option value="BENGUELA">BENGUELA</option>
+          <option value="LOBITO">LOBITO</option>
+          <option value="CKC">CKC</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="closeApproveModal()">Cancelar</button>
+      <button id="approve-btn" class="btn" style="background:#16a34a;color:#fff;border-color:#16a34a" onclick="doApproveUser()">
+        <i class="ti ti-check"></i> Aprovar e activar
+      </button>
     </div>
   </div>
 </div>
