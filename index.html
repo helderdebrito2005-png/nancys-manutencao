@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt">
 <head>
 <meta charset="UTF-8">
@@ -291,7 +291,7 @@ window.doRegister = async function(){
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    await setDoc(doc(db,'users', cred.user.uid), {
+    await setDoc(doc(db,'manutencao_users', cred.user.uid), {
       uid: cred.user.uid, name, email, role: null,
       initials, color:'#94a3b8', unit:'', status:'pending',
       createdAt: serverTimestamp()
@@ -324,7 +324,7 @@ window.doApproveUser = async function(){
   const btn  = document.getElementById('approve-btn');
   btn.disabled=true; btn.textContent='A aprovar…';
   try{
-    await updateDoc(doc(db,'users',uid),{ status:'active', role, unit });
+    await updateDoc(doc(db,'manutencao_users',uid),{ status:'active', role, unit });
     closeApproveModal();
     refreshTeamTable();
   }catch(e){ alert('Erro: '+e.message); }
@@ -333,7 +333,7 @@ window.doApproveUser = async function(){
 window.doRejectUser = async function(uid, name){
   if(!confirm(`Rejeitar e remover o utilizador "${name}"?\nEsta acção não pode ser desfeita.`)) return;
   try{
-    await deleteDoc(doc(db,'users',uid));
+    await deleteDoc(doc(db,'manutencao_users',uid));
     refreshTeamTable();
   }catch(e){ alert('Erro: '+e.message); }
 };
@@ -369,7 +369,7 @@ window.doCreateUser = async function(){
     const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const COLORS = ['#dc2626','#7c3aed','#059669','#0d9488','#f59e0b','#ec4899','#f43f5e','#a855f7','#0369a1','#6366f1'];
     const color = COLORS[Math.floor(Math.random()*COLORS.length)];
-    await setDoc(doc(db,'users', uid), { uid, name, email, role, unit, initials, color });
+    await setDoc(doc(db,'manutencao_users', uid), { uid, name, email, role, unit, initials, color });
     // Faz logout na instância secundária
     await signOut(authSecondary);
     sucEl.textContent = `✓ Utilizador "${name}" criado com sucesso!`;
@@ -389,7 +389,7 @@ window.doCreateUser = async function(){
 
 /* ── Tabela de equipa dinâmica ── */
 async function refreshTeamTable(){
-  const snap = await getDocs(collection(db,'users'));
+  const snap = await getDocs(collection(db,'manutencao_users'));
   const tbody        = document.getElementById('team-tbody');
   const pendingWrap  = document.getElementById('pending-users-wrap');
   const pendingTbody = document.getElementById('pending-tbody');
@@ -450,7 +450,7 @@ onAuthStateChanged(auth, async (firebaseUser)=>{
   if(firebaseUser){
     let profile = null;
     try{
-      const snap = await getDoc(doc(db,'users',firebaseUser.uid));
+      const snap = await getDoc(doc(db,'manutencao_users',firebaseUser.uid));
       if(snap.exists()) profile = snap.data();
     }catch(_){}
 
@@ -464,7 +464,7 @@ onAuthStateChanged(auth, async (firebaseUser)=>{
           uid: firebaseUser.uid, name: 'Nancy Admin', email: ADMIN_EMAIL,
           role: 'admin', status: 'active', initials: 'NA', color: '#6366f1', unit: ''
         };
-        await setDoc(doc(db,'users', firebaseUser.uid), profile);
+        await setDoc(doc(db,'manutencao_users', firebaseUser.uid), profile);
       } else {
         // Outro utilizador sem perfil — mostrar mensagem
         loginPage.style.display   = 'none';
@@ -512,7 +512,7 @@ onAuthStateChanged(auth, async (firebaseUser)=>{
 
 /* ── Seed users collection if empty (first run, admin only) ── */
 async function seedUsersIfEmpty(){
-  const snap = await getDocs(collection(db,'users'));
+  const snap = await getDocs(collection(db,'manutencao_users'));
   if(!snap.empty) return;
   // Structure: doc id = Firebase Auth UID (must match)
   // This is a reference template — real UIDs come from Firebase Console
