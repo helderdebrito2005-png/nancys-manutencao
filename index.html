@@ -448,11 +448,33 @@ onAuthStateChanged(auth, async (firebaseUser)=>{
   const appRoot     = document.getElementById('app-root');
   const waitingPage = document.getElementById('waiting-page');
   if(firebaseUser){
-    let profile = { name: firebaseUser.email, role: null, status:'pending', initials:'?' };
+    let profile = null;
     try{
       const snap = await getDoc(doc(db,'users',firebaseUser.uid));
       if(snap.exists()) profile = snap.data();
     }catch(_){}
+
+    // Se não tem perfil no Firestore → verificar se é o primeiro utilizador (auto-admin)
+    if(!profile){
+      const allUsers = await getDocs(collection(db,'users'));
+      if(allUsers.empty){
+        // Primeiro utilizador → admin automático
+        const initials = (firebaseUser.email||'A').slice(0,2).toUpperCase();
+        profile = { uid:firebaseUser.uid, name: firebaseUser.email, email: firebaseUser.email,
+                    role:'admin', status:'active', initials, color:'#6366f1', unit:'' };
+        await setDoc(doc(db,'users',firebaseUser.uid), profile);
+      } else {
+        // Conta Auth existe mas sem perfil — mostrar mensagem específica
+        loginPage.style.display   = 'none';
+        appRoot.style.display     = 'none';
+        waitingPage.style.display = 'flex';
+        document.getElementById('waiting-name').textContent = firebaseUser.email;
+        document.getElementById('waiting-msg').textContent  =
+          'A tua conta existe mas ainda não tem perfil configurado. Contacta o administrador para te adicionar em Configurações → Adicionar membro.';
+        return;
+      }
+    }
+
     currentUser = { uid: firebaseUser.uid, ...profile };
     window.__currentUser = currentUser;
 
@@ -462,6 +484,8 @@ onAuthStateChanged(auth, async (firebaseUser)=>{
       appRoot.style.display     = 'none';
       waitingPage.style.display = 'flex';
       document.getElementById('waiting-name').textContent = profile.name || '';
+      document.getElementById('waiting-msg').textContent  =
+        'Aguarda que o administrador aprove o teu acesso e atribua o teu cargo.';
     } else {
       // Utilizador aprovado — mostrar app
       waitingPage.style.display = 'none';
@@ -2081,11 +2105,10 @@ function switchAuthTab(tab){
     </div>
     <div style="font-size:22px;font-weight:700;color:#0f172a;margin-bottom:8px">Conta criada com sucesso!</div>
     <div style="font-size:14px;color:#64748b;line-height:1.6;margin-bottom:6px">
-      Olá, <strong id="waiting-name"></strong>! O teu pedido foi enviado.<br>
-      Aguarda que o administrador aprove o teu acesso e atribua o teu cargo.
+      Olá, <strong id="waiting-name"></strong>!
     </div>
-    <div style="margin:20px 0;padding:14px;background:#fef3c7;border-radius:12px;border:1px solid #fde68a;font-size:13px;color:#92400e">
-      <i class="ti ti-info-circle"></i> Receberás acesso assim que o administrador aprovar a tua conta.
+    <div id="waiting-msg" style="margin:20px 0;padding:14px;background:#fef3c7;border-radius:12px;border:1px solid #fde68a;font-size:13px;color:#92400e;line-height:1.5">
+      <i class="ti ti-info-circle"></i> Aguarda que o administrador aprove o teu acesso.
     </div>
     <button class="btn" style="margin:0 auto" onclick="doLogout()"><i class="ti ti-logout"></i> Sair</button>
   </div>
