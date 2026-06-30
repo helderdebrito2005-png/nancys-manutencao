@@ -454,17 +454,19 @@ onAuthStateChanged(auth, async (firebaseUser)=>{
       if(snap.exists()) profile = snap.data();
     }catch(_){}
 
-    // Se não tem perfil no Firestore → verificar se é o primeiro utilizador (auto-admin)
+    // Se não tem perfil no Firestore
     if(!profile){
-      const allUsers = await getDocs(collection(db,'users'));
-      if(allUsers.empty){
-        // Primeiro utilizador → admin automático
-        const initials = (firebaseUser.email||'A').slice(0,2).toUpperCase();
-        profile = { uid:firebaseUser.uid, name: firebaseUser.email, email: firebaseUser.email,
-                    role:'admin', status:'active', initials, color:'#6366f1', unit:'' };
-        await setDoc(doc(db,'users',firebaseUser.uid), profile);
+      // Email do administrador principal — sempre tem acesso admin
+      const ADMIN_EMAIL = 'nancy@nancys.ao';
+      if(firebaseUser.email === ADMIN_EMAIL){
+        // Criar perfil de admin automaticamente
+        profile = {
+          uid: firebaseUser.uid, name: 'Nancy Admin', email: ADMIN_EMAIL,
+          role: 'admin', status: 'active', initials: 'NA', color: '#6366f1', unit: ''
+        };
+        await setDoc(doc(db,'users', firebaseUser.uid), profile);
       } else {
-        // Conta Auth existe mas sem perfil — mostrar mensagem específica
+        // Outro utilizador sem perfil — mostrar mensagem
         loginPage.style.display   = 'none';
         appRoot.style.display     = 'none';
         waitingPage.style.display = 'flex';
